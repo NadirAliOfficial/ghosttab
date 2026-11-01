@@ -1,8 +1,8 @@
 #!/bin/bash
-# Installs `b` + the Claude Code skill into ~/.claude/skills/browser-cli
+# Installs `b` + the Claude Code skill into ~/.claude/skills/ghosttab
 set -e
 cd "$(dirname "$0")"
-D="$HOME/.claude/skills/browser-cli"
+D="$HOME/.claude/skills/ghosttab"
 mkdir -p "$D"
 cp b.py SKILL.md ocr.swift "$D/"
 chmod +x "$D/b.py"

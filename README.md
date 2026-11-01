@@ -1,4 +1,6 @@
-# browser-cli
+# GhostTab 👻
+
+**Your real browser, driven invisibly from the terminal.**
 
 Drive your real, logged-in browser on macOS from the terminal — as **text**, not screenshots.
 
@@ -27,14 +29,14 @@ b bg off
 
 ## Install
 ```bash
-git clone https://github.com/NadirAliOfficial/browser-cli && cd browser-cli && ./install.sh
+git clone https://github.com/NadirAliOfficial/ghosttab && cd ghosttab && ./install.sh
 ```
 Requirements: macOS, Brave or Chrome (`BROWSER=chrome b ...`), Xcode Command Line Tools (for OCR).
 
 One-time: browser menu bar → **View → Developer → Allow JavaScript from Apple Events**.
 Optional for real mouse/keyboard: System Settings → Privacy & Security → **Accessibility** → allow your terminal.
 
-`install.sh` also installs `SKILL.md` as a Claude Code skill (`~/.claude/skills/browser-cli`), so the agent picks it up automatically.
+`install.sh` also installs `SKILL.md` as a Claude Code skill (`~/.claude/skills/ghosttab`), so the agent picks it up automatically.
 
 ## Commands
 | | |

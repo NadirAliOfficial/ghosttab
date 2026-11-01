@@ -1,9 +1,9 @@
 ---
-name: browser-cli
+name: ghosttab
 description: Use for ANY task in the user's browser on this Mac — open a site, read a page, check inboxes/dashboards, click, fill forms, upload files, draft messages. Drives Brave (default) or Chrome as TEXT via the `b` command, no screenshots. Prefer this over Claude in Chrome / screenshot tools; it does the same jobs for far fewer tokens.
 ---
 
-# Browser via CLI (`b`)
+# GhostTab — browser via CLI (`b`)
 
 Drive the user's real, logged-in Brave from Bash. Everything is text. `BROWSER=chrome b ...` targets Chrome. Works on window 1, active tab.
 
