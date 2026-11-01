@@ -1,11 +1,11 @@
 ---
 name: ghosttab
-description: Use for ANY task in the user's browser on this Mac — open a site, read a page, check inboxes/dashboards, click, fill forms, upload files, draft messages. Drives Brave (default) or Chrome as TEXT via the `b` command, no screenshots. Prefer this over Claude in Chrome / screenshot tools; it does the same jobs for far fewer tokens.
+description: Use for ANY task in the user's browser on this Mac — open a site, read a page, check inboxes/dashboards, click, fill forms, upload files, draft messages. Drives Chrome (default) or Brave as TEXT via the `b` command, no screenshots. Prefer this over Claude in Chrome / screenshot tools; it does the same jobs for far fewer tokens.
 ---
 
 # GhostTab — browser via CLI (`b`)
 
-Drive the user's real, logged-in Brave from Bash. Everything is text. `BROWSER=chrome b ...` targets Chrome. Works on window 1, active tab.
+Drive the user's real, logged-in Chrome from Bash. Everything is text. `BROWSER=brave b ...` targets Brave. Without bg mode it works on window 1, active tab.
 
 ## Commands
 | Command | Does |
@@ -29,6 +29,7 @@ Drive the user's real, logged-in Brave from Bash. Everything is text. `BROWSER=c
 | `b rupload N\|LABEL /path` | real click + macOS file dialog (front window; only if `upload` is rejected) |
 | `b do 'cmd ; cmd ; cmd'` | batch steps in ONE call (auto 0.8s pause after click/go) — use it to save tool calls |
 | `b console` | first call installs hook; next call prints recent errors/logs |
+| `b log [N]` | last N actions taken (time, browser, command) — show the user what was done |
 | `b wait TEXT [sec]` | wait until text appears |
 | `b js 'CODE'` | any JS, prints result |
 | `b ocr [FILTER]` | read the window's pixels as text ON-DEVICE (Apple Vision, ~0.7s, zero image tokens) → `x,y text` in page coords. For canvas, images, PDFs, charts, anything `text` misses |
@@ -45,6 +46,7 @@ Run `b bg on` first so the user isn't disturbed, then `b go URL` etc. It shares 
 In bg mode real-input commands (`rclick`, `type`, `key`, `rupload`, `rclickat`) are refused — use `click`, `fill`, `clickat`, `enter`.
 `ocr`/`shot`/`tab`/`close` don't work in bg mode (the window is minimized); `go`/`back`/`reload` navigate from inside the page so the browser never activates.
 If a site truly needs real input or OCR, tell the user, `b bg off`, and do it in the front window. `b bg off` when done (parks the hidden window for reuse).
+The user can watch live: right-click the browser's Dock icon → window named "ghosttab". bg mode uses ONE hidden tab (adding tabs would pop the window up).
 If `b` says the background window is gone, stop — never fall back to the user's window silently.
 
 ## Workflow (cheap first)

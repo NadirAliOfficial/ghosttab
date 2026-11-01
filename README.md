@@ -36,7 +36,7 @@ b bg off
 ```bash
 git clone https://github.com/NadirAliOfficial/ghosttab && cd ghosttab && ./install.sh
 ```
-Requirements: macOS, Brave or Chrome (`BROWSER=chrome b ...`), Xcode Command Line Tools (for OCR).
+Requirements: macOS, Chrome or Brave (`BROWSER=brave b ...`), Xcode Command Line Tools (for OCR).
 
 One-time: browser menu bar → **View → Developer → Allow JavaScript from Apple Events**.
 Optional for real mouse/keyboard: System Settings → Privacy & Security → **Accessibility** → allow your terminal.
@@ -54,6 +54,7 @@ Optional for real mouse/keyboard: System Settings → Privacy & Security → **A
 | `upload N\|LABEL\|- FILE` · `drop N\|TEXT FILE` | files/videos without dialogs |
 | `ocr [FILTER]` · `clickat X Y` | on-device OCR + click by coordinates |
 | `rclick` `type` `key COMBO` `rupload` `rclickat` | real input (front window) |
+| `log [N]` | what the agent did, when |
 | `console` · `wait TEXT [sec]` · `js CODE` · `shot` | debug, waits, raw JS, last-resort screenshot |
 | `bg on\|off\|close\|status` | background mode (hidden, reusable) |
 | `do 'cmd ; cmd'` | batch |

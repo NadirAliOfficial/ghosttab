@@ -2,3 +2,4 @@
 __pycache__/
 ocr
 .DS_Store
+activity.log

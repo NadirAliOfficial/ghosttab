@@ -1,12 +1,12 @@
 #!/usr/bin/python3
-"""Drive Brave/Chrome from the CLI as text (no screenshots). BROWSER=chrome to use Chrome."""
+"""Drive Chrome/Brave from the CLI as text (no screenshots). BROWSER=brave to use Brave."""
 import json
 import os
 import subprocess
 import sys
 import time
 
-APP = 'Google Chrome' if os.environ.get('BROWSER', 'brave').lower().startswith('chrome') else 'Brave Browser'
+APP = 'Brave Browser' if os.environ.get('BROWSER', 'chrome').lower().startswith('brave') else 'Google Chrome'
 
 SCRIPT = '''on run argv
 tell application "%s"
@@ -245,9 +245,13 @@ USAGE = '''commands:
  ocr [FILTER]        read the window's pixels as text on-device (no image tokens) -> "x,y text" page coords
  clickat X Y         click page point (from ocr), works in bg   rclickat X Y  real mouse click there
  bg on|off|close|status  hidden minimized window; never steals focus (off parks it, close removes)
+ log [N]             last N actions (what the agent did, when, where)
  wait TEXT [sec] | js CODE | shot   (window screenshot, last resort)'''
 
 
+LOG = os.path.join(HERE, 'activity.log')
+ACTS = {'go', 'open', 'back', 'reload', 'close', 'tab', 'click', 'rclick', 'fill', 'type', 'select', 'check', 'enter',
+        'key', 'upload', 'drop', 'rupload', 'clickat', 'rclickat', 'scroll', 'hover', 'js', 'bg'}
 ALIAS = {'t': 'tail', 'x': 'text', 'e': 'el', 'c': 'click', 'f': 'fill', 'g': 'go', 'o': 'open', 'u': 'url',
          'k': 'key', 's': 'scroll', 'w': 'wait', 'up': 'upload'}
 
@@ -272,6 +276,17 @@ def main(a=None):
                 step.append(tok)
         return
     c = a[0] = ALIAS.get(a[0], a[0])
+    if c == 'log':
+        try:
+            lines = open(LOG).read().splitlines()
+        except OSError:
+            lines = []
+        print('\n'.join(lines[-(int(a[1]) if len(a) > 1 else 20):]) or 'no activity yet')
+        return
+    if c in ACTS:
+        args = ' '.join(x if len(x) < 70 else x[:67] + '...' for x in a[1:])
+        with open(LOG, 'a') as fh:
+            fh.write('%s %s%s %s %s\n' % (time.strftime('%m-%d %H:%M:%S'), APP.split()[0].lower(), ' bg' if bgwin() else '', c, args))
     if bgwin() and c in ('open', 'go', 'back', 'reload'):
         # AppleScript navigation un-minimizes and activates the browser; navigate from inside the page instead
         js('window.__gtOld=1;1')
