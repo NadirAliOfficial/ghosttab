@@ -12,7 +12,7 @@ ok "$(b c Go)" "clicked" click
 ok "$(b up - "$T/a.txt")" "attached a.txt" upload
 ok "$(b drop Drop "$T/v.mp4")" "dropped v.mp4" drop
 ok "$(b x 0 400)" "clicked file:a.txt drop:5242880" page-state
-ok "$(b ocr canvas)" "Canvas 4250" ocr
+ok "$(b ocr 2>&1)" "minimized" ocr-blocked-in-bg
 ok "$(b do 'f Name Ali ; e')" 'Name = "Ali"' batch
-b bg off >/dev/null
+b bg close >/dev/null
 rm -rf "$T"; exit ${FAIL:-0}

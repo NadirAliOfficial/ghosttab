@@ -33,7 +33,7 @@ Drive the user's real, logged-in Brave from Bash. Everything is text. `BROWSER=c
 | `b js 'CODE'` | any JS, prints result |
 | `b ocr [FILTER]` | read the window's pixels as text ON-DEVICE (Apple Vision, ~0.7s, zero image tokens) → `x,y text` in page coords. For canvas, images, PDFs, charts, anything `text` misses |
 | `b clickat X Y` | click a page point from `ocr` (works in bg) · `b rclickat X Y` real mouse there |
-| `b bg on\|off\|status` | BACKGROUND MODE: a separate Brave window parked off-screen; all commands target it, user's apps/focus untouched |
+| `b bg on\|off\|close\|status` | BACKGROUND MODE: a hidden minimized window; never comes to front, nothing visible on screen. `off` parks it for instant reuse, `close` removes it |
 | `b shot` | LAST RESORT: browser-window screenshot at 1200px → /tmp/b-shot.png |
 
 Aliases: `t`=tail `x`=text `e`=el `c`=click `f`=fill `g`=go `o`=open `u`=url `k`=key `s`=scroll `w`=wait `up`=upload.
@@ -43,7 +43,8 @@ Custom dropdowns (div-based): `click` to open, `el`, then `click` the option.
 ## Background mode (default for multi-step jobs)
 Run `b bg on` first so the user isn't disturbed, then `b go URL` etc. It shares the user's logins.
 In bg mode real-input commands (`rclick`, `type`, `key`, `rupload`, `rclickat`) are refused — use `click`, `fill`, `clickat`, `enter`.
-If a site truly needs real input, tell the user, `b bg off`, and do it in the front window. `b bg off` when done (closes the bg window).
+`ocr`/`shot`/`tab`/`close` don't work in bg mode (the window is minimized); `go`/`back`/`reload` navigate from inside the page so the browser never activates.
+If a site truly needs real input or OCR, tell the user, `b bg off`, and do it in the front window. `b bg off` when done (parks the hidden window for reuse).
 If `b` says the background window is gone, stop — never fall back to the user's window silently.
 
 ## Workflow (cheap first)

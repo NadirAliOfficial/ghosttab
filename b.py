@@ -18,7 +18,8 @@ tell application "%s"
     set n to make new window
     set sw to (item 2 of argv) as integer
     set bounds of n to {sw - 40, 60, sw + 1240, 900}
-    delay 0.5
+    set URL of active tab of n to "about:blank"
+    set minimized of n to true
     set index of u to 1
     return id of n
   end if
@@ -202,6 +203,8 @@ var b=w.objectForKey("kCGWindowBounds");o.push([w.objectForKey("kCGWindowNumber"
 
 
 def capture():
+    if bgwin():
+        sys.exit('ocr/shot need a visible window; the bg window is minimized. Use text/el, or b bg off for ocr')
     n, x, y, w, h = cg_window()
     path = '/tmp/b-shot-raw.png'
     subprocess.run(['screencapture', '-x', '-o', '-l', str(n), path])
@@ -239,7 +242,7 @@ USAGE = '''commands:
  console             recent console errors/logs (hook installs on first call)
  ocr [FILTER]        read the window's pixels as text on-device (no image tokens) -> "x,y text" page coords
  clickat X Y         click page point (from ocr), works in bg   rclickat X Y  real mouse click there
- bg on|off|status    work in a separate Brave window behind your apps (no focus stealing)
+ bg on|off|close|status  hidden minimized window; never steals focus (off parks it, close removes)
  wait TEXT [sec] | js CODE | shot   (window screenshot, last resort)'''
 
 
@@ -267,7 +270,25 @@ def main(a=None):
                 step.append(tok)
         return
     c = a[0] = ALIAS.get(a[0], a[0])
-    if c in ('tabs', 'tab', 'open', 'go', 'back', 'reload', 'close', 'front'):
+    if bgwin() and c in ('open', 'go', 'back', 'reload'):
+        # AppleScript navigation un-minimizes and activates the browser; navigate from inside the page instead
+        if c in ('open', 'go'):
+            url = a[1] if '://' in a[1] or a[1].startswith(('data:', 'about:')) else 'https://' + a[1]
+            if url.startswith('data:text/html,'):
+                from urllib.parse import unquote
+                js('document.open();document.write(%s);document.close();1' % json.dumps(unquote(url[15:])))
+            else:
+                js('location.href=%s;1' % json.dumps(url))
+        else:
+            js({'back': 'history.back();1', 'reload': 'location.reload();1'}[c])
+        time.sleep(0.6)
+        end = time.time() + 15
+        while time.time() < end and js('document.readyState') != 'complete':
+            time.sleep(0.3)
+        print('ok')
+    elif bgwin() and c in ('tab', 'close', 'front'):
+        sys.exit('%s not available in bg mode (single hidden tab); use go' % c)
+    elif c in ('tabs', 'tab', 'open', 'go', 'back', 'reload', 'close', 'front'):
         out = osa(*a)
         if c in ('open', 'go'):
             time.sleep(2.5)
@@ -422,22 +443,32 @@ return "clicked: "+(e.innerText||e.getAttribute("aria-label")||e.tagName).replac
             if bgwin():
                 print('bg already on (window %s)' % bgwin())
                 return
+            parked = BGFILE + '.parked'
+            if os.path.exists(parked):
+                wid = open(parked).read().strip()
+                if osa('exists', wid=wid) == 'yes':
+                    os.rename(parked, BGFILE)
+                    print('bg on: reusing hidden window %s' % wid)
+                    return
+                os.remove(parked)
             app = front_app()
             sw = subprocess.run(['osascript', '-l', 'JavaScript', '-e', 'ObjC.import("AppKit");$.NSScreen.mainScreen.frame.size.width'],
                                 capture_output=True, text=True).stdout.strip() or '1512'
             wid = osa('newwin', str(int(float(sw))), wid='')
-            time.sleep(0.3)
-            open(BGFILE, 'w').write(wid)
-            subprocess.run(['osascript', '-e', 'tell application "%s" to set index of (first window whose id is not %s) to 1' % (APP, wid)],
-                           capture_output=True)
             if app:
                 subprocess.run(['open', '-b', app])
-            print('bg on: working in background window %s; your windows stay in front' % wid)
+            open(BGFILE, 'w').write(wid)
+            print('bg on: hidden minimized window %s; never comes to front' % wid)
         elif m == 'off':
             if bgwin():
-                osa('closewin')
-                os.remove(BGFILE)
-            print('bg off: back to your front window')
+                os.rename(BGFILE, BGFILE + '.parked')
+            print('bg off: back to your front window (hidden window parked for reuse; b bg close removes it)')
+        elif m == 'close':
+            for f in (BGFILE, BGFILE + '.parked'):
+                if os.path.exists(f):
+                    osa('closewin', wid=open(f).read().strip())
+                    os.remove(f)
+            print('hidden window closed')
         else:
             print('bg on (window %s)' % bgwin() if bgwin() else 'bg off')
     else:

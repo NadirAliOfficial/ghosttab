@@ -5,7 +5,7 @@
 GhostTab is built for **AI agents**, not humans: Claude Code, Codex, or any agent with a shell. Install it once, and your agent can browse, read, click, fill forms and upload files in a hidden tab while you keep using your Mac.
 
 - **~5–10× fewer tokens** than screenshot-based browser agents — pages come back as compact text (a few hundred tokens vs ~1,500 per screenshot)
-- **Never steals your screen** — background mode runs in an off-screen window that shares your logins
+- **Never steals your screen** — background mode runs in a hidden minimized window: no focus stealing, nothing on screen
 - **~0.2s per step**, batching for multi-step actions in one tool call
 - Ships with an agent skill (`SKILL.md`) that teaches the agent the commands and the safety rules
 
@@ -25,7 +25,7 @@ b bg off
 
 ## Features
 - **Text first** — page text, element lists, values; shadow DOM + same-origin iframes included.
-- **Background mode** — separate Brave/Chrome window parked off-screen; shares your logins.
+- **Background mode** — a hidden, minimized Brave/Chrome window that never comes to the front; shares your logins.
 - **Uploads without dialogs** — files streamed into the page (`upload`) or dropped on drop zones (`drop`); 50 MB ≈ 3s.
 - **On-device OCR** — Apple Vision reads what the DOM can't (canvas, images, charts) with click coordinates.
 - **Real input when needed** — trusted mouse clicks, typing, key combos, native file dialog (front window).
@@ -55,7 +55,7 @@ Optional for real mouse/keyboard: System Settings → Privacy & Security → **A
 | `ocr [FILTER]` · `clickat X Y` | on-device OCR + click by coordinates |
 | `rclick` `type` `key COMBO` `rupload` `rclickat` | real input (front window) |
 | `console` · `wait TEXT [sec]` · `js CODE` · `shot` | debug, waits, raw JS, last-resort screenshot |
-| `bg on\|off\|status` | background mode |
+| `bg on\|off\|close\|status` | background mode (hidden, reusable) |
 | `do 'cmd ; cmd'` | batch |
 
 Aliases: `t`=tail `x`=text `e`=el `c`=click `f`=fill `g`=go `o`=open `u`=url `k`=key `s`=scroll `w`=wait `up`=upload.
