@@ -13,6 +13,14 @@ tell application "%s"
   set wid to item 1 of argv
   set argv to rest of argv
   set c to item 1 of argv
+  if c is "findghost" then
+    set target to ((item 2 of argv) as integer) - 40
+    repeat with x in windows
+      set bb to bounds of x
+      if minimized of x and (item 1 of bb) = target then return id of x
+    end repeat
+    return ""
+  end if
   if c is "newwin" then
     set u to window 1
     set n to make new window
@@ -451,6 +459,13 @@ return "clicked: "+(e.innerText||e.getAttribute("aria-label")||e.tagName).replac
                     print('bg on: reusing hidden window %s' % wid)
                     return
                 os.remove(parked)
+            sw = subprocess.run(['osascript', '-l', 'JavaScript', '-e', 'ObjC.import("AppKit");$.NSScreen.mainScreen.frame.size.width'],
+                                capture_output=True, text=True).stdout.strip() or '1512'
+            found = osa('findghost', str(int(float(sw))), wid='')
+            if found.isdigit():
+                open(BGFILE, 'w').write(found)
+                print('bg on: reusing hidden window %s' % found)
+                return
             app = front_app()
             sw = subprocess.run(['osascript', '-l', 'JavaScript', '-e', 'ObjC.import("AppKit");$.NSScreen.mainScreen.frame.size.width'],
                                 capture_output=True, text=True).stdout.strip() or '1512'
