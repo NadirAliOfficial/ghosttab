@@ -1,0 +1,4 @@
+.bgwin-*
+__pycache__/
+ocr
+.DS_Store
