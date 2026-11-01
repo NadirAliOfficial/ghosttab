@@ -98,7 +98,7 @@ def bgwin():
 def osa(*args, wid=None):
     wid = bgwin() if wid is None else wid
     r = subprocess.run(['osascript', '-', wid or '0', *args], input=SCRIPT, capture_output=True, text=True)
-    if wid and r.returncode and 'get window' in r.stderr and args[0] != 'closewin':
+    if wid and r.returncode and 'get window' in r.stderr and args[0] not in ('closewin', 'exists'):
         sys.exit('background window is gone (closed?). Nothing was done. Run: b bg off, then b bg on')
     out = (r.stdout or r.stderr).strip()
     if 'Executing JavaScript through AppleScript is turned off' in out:
@@ -286,7 +286,7 @@ def main(a=None):
     if c in ACTS:
         args = ' '.join(x if len(x) < 70 else x[:67] + '...' for x in a[1:])
         with open(LOG, 'a') as fh:
-            fh.write('%s %s%s %s %s\n' % (time.strftime('%m-%d %H:%M:%S'), APP.split()[0].lower(), ' bg' if bgwin() else '', c, args))
+            fh.write('%s %s%s %s %s\n' % (time.strftime('%m-%d %H:%M:%S'), ('brave' if 'Brave' in APP else 'chrome'), ' bg' if bgwin() else '', c, args))
     if bgwin() and c in ('open', 'go', 'back', 'reload'):
         # AppleScript navigation un-minimizes and activates the browser; navigate from inside the page instead
         js('window.__gtOld=1;1')
