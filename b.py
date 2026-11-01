@@ -274,6 +274,7 @@ def main(a=None):
     c = a[0] = ALIAS.get(a[0], a[0])
     if bgwin() and c in ('open', 'go', 'back', 'reload'):
         # AppleScript navigation un-minimizes and activates the browser; navigate from inside the page instead
+        js('window.__gtOld=1;1')
         if c in ('open', 'go'):
             url = a[1] if '://' in a[1] or a[1].startswith(('data:', 'about:')) else 'https://' + a[1]
             if url.startswith('data:text/html,'):
@@ -283,10 +284,9 @@ def main(a=None):
                 js('location.href=%s;1' % json.dumps(url))
         else:
             js({'back': 'history.back();1', 'reload': 'location.reload();1'}[c])
-        time.sleep(0.6)
-        end = time.time() + 15
-        while time.time() < end and js('document.readyState') != 'complete':
-            time.sleep(0.3)
+        end = time.time() + 20
+        while time.time() < end and js('window.__gtOld?"old":document.readyState') != 'complete':
+            time.sleep(0.25)
         print('ok')
     elif bgwin() and c in ('tab', 'close', 'front'):
         sys.exit('%s not available in bg mode (single hidden tab); use go' % c)
