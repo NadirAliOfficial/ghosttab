@@ -279,11 +279,13 @@ def main(a=None):
             url = a[1] if '://' in a[1] or a[1].startswith(('data:', 'about:')) else 'https://' + a[1]
             if url.startswith('data:text/html,'):
                 from urllib.parse import unquote
-                js('location.href="about:blank";1')
-                for _ in range(40):
-                    if js('location.href') == 'about:blank':
-                        break
-                    time.sleep(0.1)
+                # about:blank would inherit the current site's CSP; use a neutral origin
+                if not js('location.href').startswith('https://example.com'):
+                    js('location.href="https://example.com/";1')
+                    for _ in range(80):
+                        if js('location.host+document.readyState') == 'example.comcomplete':
+                            break
+                        time.sleep(0.1)
                 js('document.open();document.write(%s);document.close();delete window.__gtOld;1' % json.dumps(unquote(url[15:])))
             else:
                 js('location.href=%s;1' % json.dumps(url))
