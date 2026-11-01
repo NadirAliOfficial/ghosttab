@@ -279,7 +279,12 @@ def main(a=None):
             url = a[1] if '://' in a[1] or a[1].startswith(('data:', 'about:')) else 'https://' + a[1]
             if url.startswith('data:text/html,'):
                 from urllib.parse import unquote
-                js('document.open();document.write(%s);document.close();1' % json.dumps(unquote(url[15:])))
+                js('location.href="about:blank";1')
+                for _ in range(40):
+                    if js('location.href') == 'about:blank':
+                        break
+                    time.sleep(0.1)
+                js('document.open();document.write(%s);document.close();delete window.__gtOld;1' % json.dumps(unquote(url[15:])))
             else:
                 js('location.href=%s;1' % json.dumps(url))
         else:
