@@ -1,10 +1,15 @@
 # GhostTab 👻
 
-**Your real browser, driven invisibly from the terminal.**
+**Browser hands for AI agents — your real, logged-in browser, driven invisibly as text.**
 
-Drive your real, logged-in browser on macOS from the terminal — as **text**, not screenshots.
+GhostTab is built for **AI agents**, not humans: Claude Code, Codex, or any agent with a shell. Install it once, and your agent can browse, read, click, fill forms and upload files in a hidden tab while you keep using your Mac.
 
-Built for AI coding agents (Claude Code, Codex, any shell-capable agent): reading a page costs a few hundred tokens instead of ~1,500 per screenshot, steps run in ~0.2s, and **background mode** works in an off-screen window so you keep using your Mac.
+- **~5–10× fewer tokens** than screenshot-based browser agents — pages come back as compact text (a few hundred tokens vs ~1,500 per screenshot)
+- **Never steals your screen** — background mode runs in an off-screen window that shares your logins
+- **~0.2s per step**, batching for multi-step actions in one tool call
+- Ships with an agent skill (`SKILL.md`) that teaches the agent the commands and the safety rules
+
+What your agent runs:
 
 ```bash
 b bg on                          # work in a hidden window, your focus untouched
