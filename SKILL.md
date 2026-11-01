@@ -49,6 +49,14 @@ If a site truly needs real input or OCR, tell the user, `b bg off`, and do it in
 The user can watch live: right-click the browser's Dock icon → window named "ghosttab". bg mode uses ONE hidden tab (adding tabs would pop the window up).
 If `b` says the background window is gone, stop — never fall back to the user's window silently.
 
+## Token rules (most waste comes from the agent's own scripts, not page reads)
+- Never hand-write polling loops: use `b until 'JS condition' [sec]` or `b wait TEXT`.
+- Long/multi-line text: write it to a file once, then `b fill N @file` (paragraphs handled).
+- Chain with `&&` so a failed step stops everything after it.
+- Prefer `b e | grep -i word` over printing whole element lists; read with small `b t`/`b x` slices.
+- If something stalls, check one cause at a time; don't re-run big extractions.
+- Video uploads may need the window visible: Chrome pauses video in minimized windows.
+
 ## Workflow (cheap first)
 1. `b tabs` / `b url` to know where you are.
 2. Read small slices: `b tail 1500`, `b text 0 2000`. Never dump whole pages.

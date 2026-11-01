@@ -97,7 +97,10 @@ def bgwin():
 
 def osa(*args, wid=None):
     wid = bgwin() if wid is None else wid
-    r = subprocess.run(['osascript', '-', wid or '0', *args], input=SCRIPT, capture_output=True, text=True)
+    try:
+        r = subprocess.run(['osascript', '-', wid or '0', *args], input=SCRIPT, capture_output=True, text=True, timeout=30)
+    except subprocess.TimeoutExpired:
+        sys.exit('page did not answer in 30s (a page dialog like "Leave site?" may be open)')
     if wid and r.returncode and 'get window' in r.stderr and args[0] not in ('closewin', 'exists'):
         sys.exit('background window is gone (closed?). Nothing was done. Run: b bg off, then b bg on')
     out = (r.stdout or r.stderr).strip()
@@ -245,6 +248,8 @@ USAGE = '''commands:
  ocr [FILTER]        read the window's pixels as text on-device (no image tokens) -> "x,y text" page coords
  clickat X Y         click page point (from ocr), works in bg   rclickat X Y  real mouse click there
  bg on|off|close|status  hidden minimized window; never steals focus (off parks it, close removes)
+ until 'JS' [sec]    wait until a JS condition is true, e.g. until '!document.querySelector("[disabled]")'
+ fill N|LABEL @file  fill from a file; newlines become paragraphs in rich editors (LinkedIn, Gmail...)
  log [N]             last N actions (what the agent did, when, where)
  wait TEXT [sec] | js CODE | shot   (window screenshot, last resort)'''
 
@@ -331,12 +336,14 @@ def main(a=None):
         q = json.dumps(a[1].lower())
         print(js(r'''(()=>{const q=%s;return (window.__cx||[]).map((e,i)=>i+' '+(e.getAttribute('aria-label')||e.innerText||e.placeholder||e.value||'').replace(/\s+/g,' ').trim().slice(0,80)).filter(s=>s.toLowerCase().includes(q)).join('\n')||'none (run el first)'})()''' % q))
     elif c in ('click', 'fill', 'select', 'check', 'enter', 'hover'):
+        if len(a) > 2 and a[2].startswith('@') and os.path.isfile(os.path.expanduser(a[2][1:])):
+            a[2] = open(os.path.expanduser(a[2][1:])).read().strip()
         v = json.dumps(a[2] if len(a) > 2 else '')
         body = {
             'click': 'e.scrollIntoView({block:"center"});e.click();return "clicked: "+lab(e).slice(0,60)',
             'hover': 'e.scrollIntoView({block:"center"});["pointerover","mouseover","mouseenter","pointermove","mousemove"].forEach(t=>e.dispatchEvent(new MouseEvent(t,{bubbles:true})));return "hovered: "+lab(e).slice(0,60)',
             'fill': '''const v=%s;if(e.tagName=="LABEL"&&e.control)e=e.control;e.focus();
-if(e.isContentEditable){document.execCommand("selectAll");document.execCommand("insertText",false,v)}
+if(e.isContentEditable){document.execCommand("selectAll");const L=v.split("\\n");L.forEach((l,i)=>{if(l)document.execCommand("insertText",false,l);if(i<L.length-1)document.execCommand("insertParagraph")})}
 else{const p=e.tagName=="TEXTAREA"?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;Object.getOwnPropertyDescriptor(p,"value").set.call(e,v);
 e.dispatchEvent(new Event("input",{bubbles:true}));e.dispatchEvent(new Event("change",{bubbles:true}))}
 return "filled "+e.tagName.toLowerCase()+" ("+v.length+" chars)"''' % v,
@@ -389,7 +396,7 @@ if(p){const d={down:p.clientHeight*.8,up:-p.clientHeight*.8,top:-1e9,bottom:1e9}
         mk = 'const file=new File(window.__up,%s,{type:%s});window.__up=null;const dt=new DataTransfer();dt.items.add(file);' % (name, mime)
         if c == 'upload':
             body = mk + FILE_TARGET + '''if(!f)return "no file input on page; try: b drop TARGET file";
-f.files=dt.files;f.dispatchEvent(new Event("input",{bubbles:true}));f.dispatchEvent(new Event("change",{bubbles:true}));
+f.files=dt.files;f.dispatchEvent(new Event("input",{bubbles:true,composed:true}));f.dispatchEvent(new Event("change",{bubbles:true,composed:true}));
 return "attached "+file.name+" ("+(file.size/1048576).toFixed(1)+" MB)"'''
         else:
             body = mk + '''const r=e.getBoundingClientRect(),o={bubbles:true,cancelable:true,dataTransfer:dt,clientX:r.x+r.width/2,clientY:r.y+r.height/2};
@@ -417,6 +424,14 @@ return "attached "+file.name+" ("+(file.size/1048576).toFixed(1)+" MB)"'''
         print(js('''(()=>{if(!window.__cxlog){window.__cxlog=[];["error","warn","log"].forEach(k=>{const o=console[k];console[k]=function(...x){window.__cxlog.push(k+": "+x.map(String).join(" ").slice(0,300));o.apply(console,x)}});
 addEventListener("error",e=>window.__cxlog.push("uncaught: "+e.message));return "console hook installed; reproduce, then run console again"}
 return window.__cxlog.slice(-30).join("\\n")||"no logs yet"})()'''))
+    elif c == 'until':
+        end = time.time() + (float(a[2]) if len(a) > 2 else 30)
+        while time.time() < end:
+            if js('!!(%s)' % a[1]) == 'true':
+                print('ok')
+                return
+            time.sleep(1)
+        sys.exit('timeout')
     elif c == 'wait':
         q, end = a[1].lower(), time.time() + (float(a[2]) if len(a) > 2 else 15)
         while time.time() < end:
