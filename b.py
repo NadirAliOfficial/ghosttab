@@ -14,21 +14,15 @@ tell application "%s"
   set argv to rest of argv
   set c to item 1 of argv
   if c is "findghost" then
-    set target to ((item 2 of argv) as integer) - 40
     repeat with x in windows
-      set bb to bounds of x
-      if minimized of x and (item 1 of bb) = target then return id of x
+      if (given name of x) is "ghosttab" then return id of x
     end repeat
     return ""
   end if
   if c is "newwin" then
-    set u to window 1
-    set n to make new window
-    set sw to (item 2 of argv) as integer
-    set bounds of n to {sw - 40, 60, sw + 1240, 900}
-    set URL of active tab of n to "about:blank"
-    set minimized of n to true
-    set index of u to 1
+    -- created already minimized and named: no window animation, nothing on screen
+    set n to make new window with properties {minimized:true}
+    set given name of n to "ghosttab"
     return id of n
   end if
   if wid is "0" then
@@ -459,19 +453,17 @@ return "clicked: "+(e.innerText||e.getAttribute("aria-label")||e.tagName).replac
                     print('bg on: reusing hidden window %s' % wid)
                     return
                 os.remove(parked)
-            sw = subprocess.run(['osascript', '-l', 'JavaScript', '-e', 'ObjC.import("AppKit");$.NSScreen.mainScreen.frame.size.width'],
-                                capture_output=True, text=True).stdout.strip() or '1512'
-            found = osa('findghost', str(int(float(sw))), wid='')
+            found = osa('findghost', wid='')
             if found.isdigit():
                 open(BGFILE, 'w').write(found)
                 print('bg on: reusing hidden window %s' % found)
                 return
             app = front_app()
-            sw = subprocess.run(['osascript', '-l', 'JavaScript', '-e', 'ObjC.import("AppKit");$.NSScreen.mainScreen.frame.size.width'],
-                                capture_output=True, text=True).stdout.strip() or '1512'
-            wid = osa('newwin', str(int(float(sw))), wid='')
-            if app:
-                subprocess.run(['open', '-b', app])
+            wid = osa('newwin', wid='')
+            if app and front_app() != app:
+                # give focus back without un-minimizing anything (unlike `open -b`)
+                subprocess.run(['osascript', '-l', 'JavaScript', '-e', 'ObjC.import("AppKit");var a=$.NSRunningApplication.runningApplicationsWithBundleIdentifier("%s");if(a.count)a.objectAtIndex(0).activateWithOptions(0)' % app],
+                               capture_output=True)
             open(BGFILE, 'w').write(wid)
             print('bg on: hidden minimized window %s; never comes to front' % wid)
         elif m == 'off':
