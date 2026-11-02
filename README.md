@@ -27,10 +27,11 @@ b bg off
 - **Text first** — page text, element lists, values; shadow DOM + same-origin iframes included.
 - **Background mode** — a hidden, minimized Brave/Chrome window that never comes to the front; shares your logins.
 - **Uploads without dialogs** — files streamed into the page (`upload`) or dropped on drop zones (`drop`); 50 MB ≈ 3s.
+- **Whole forms in one call** — `form` dumps every field (label, required, value, options); `fillform answers.json` fills the page: text, selects, radios, react-select comboboxes, files.
 - **On-device OCR** — Apple Vision reads what the DOM can't (canvas, images, charts) with click coordinates.
 - **Real input when needed** — trusted mouse clicks, typing, key combos, native file dialog (front window).
 - **Batching + short aliases** — fewer tool calls, fewer tokens.
-- **Safety rails** — the bundled agent skill forbids final actions (send/pay/submit/delete) without the user's OK, and typing passwords/2FA. If the background window disappears, `b` stops instead of touching your window.
+- **Safety rails** — the bundled agent skill forbids final actions (send/pay/submit/delete) without the user's OK, and typing passwords/2FA. If the background window disappears, `b` opens a new hidden one instead of touching your window.
 
 ## Install
 ```bash
@@ -48,13 +49,17 @@ Optional for real mouse/keyboard: System Settings → Privacy & Security → **A
 |---|---|
 | `tabs` `tab N` `open URL` `go URL` `back` `reload` `close` `url` `front` | navigation |
 | `text [start] [len]` · `tail [len]` | read page text |
-| `el` · `find TEXT` | list / filter interactive elements |
+| `el` · `find TEXT` | list / filter interactive elements (dialog-scoped when a modal is open) |
+| `form` · `fillform @answers.json` | dump / fill a whole form or dialog in one call |
+| `pick N\|LABEL TEXT` · `choose QUESTION OPTION` | react-select comboboxes · radio/checkbox questions |
 | `click N\|TEXT` · `fill N\|LABEL VALUE` · `select` · `check` · `hover` · `enter` | act (JS, background-safe) |
 | `scroll down\|up\|top\|bottom\|PX\|TEXT` | page + main scroll panel |
 | `upload N\|LABEL\|- FILE` · `drop N\|TEXT FILE` | files/videos without dialogs |
 | `ocr [FILTER]` · `clickat X Y` | on-device OCR + click by coordinates |
 | `rclick` `type` `key COMBO` `rupload` `rclickat` | real input (front window) |
 | `log [N]` | what the agent did, when |
+| `until url~X\|text X\|gone X\|'JS'` | wait without writing JS |
+| `li jobs QUERY` · `li job ID` | LinkedIn job search / summary |
 | `console` · `wait TEXT [sec]` · `js CODE` · `shot` | debug, waits, raw JS, last-resort screenshot |
 | `bg on\|off\|close\|status` | background mode (hidden, reusable) |
 | `do 'cmd ; cmd'` | batch |
@@ -62,7 +67,7 @@ Optional for real mouse/keyboard: System Settings → Privacy & Security → **A
 Aliases: `t`=tail `x`=text `e`=el `c`=click `f`=fill `g`=go `o`=open `u`=url `k`=key `s`=scroll `w`=wait `up`=upload.
 
 ## Limits
-Cross-origin iframes (payment fields, third-party sign-in) aren't readable — by design. CAPTCHAs and 2FA are left to you. Off-screen windows throttle video/animation; reading and clicking are unaffected. A few sites accept only trusted input — use the real-input commands in the front window.
+Cross-origin iframes (payment fields, third-party sign-in) aren't readable — by design. CAPTCHAs and 2FA are left to you. Off-screen windows throttle video/animation; reading and clicking are unaffected. Sites with a strict CSP (LinkedIn) block the file-picker stub; use a saved file (`upload NAME`), `drop`, or `rupload`. A few sites accept only trusted input — use the real-input commands in the front window.
 
 ## Test
 ```bash

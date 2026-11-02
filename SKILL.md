@@ -13,25 +13,32 @@ Drive the user's real, logged-in Chrome from Bash. Everything is text. `BROWSER=
 | `b tabs` / `b tab N` / `b front` | list tabs / switch tab / bring browser to front |
 | `b open URL` / `b go URL` | new tab / navigate current tab (waits 2.5s) |
 | `b back`, `b reload`, `b close`, `b url` | basic nav, current URL + title |
-| `b text [start] [len]` | page text (default first 3000 chars) |
-| `b tail [len]` | last N chars — chats/inboxes, latest messages |
-| `b el` | numbered visible clickable/fillable elements, incl. shadow DOM + same-origin iframes |
+| `b text [-m] [all] [start] [len]` | page text (default first 3000 chars). `-m` drops header/nav/footer/aside |
+| `b tail [-m] [all] [len]` | last N chars — chats/inboxes, latest messages |
+| `b el [all]` | numbered visible clickable/fillable elements, incl. shadow DOM + same-origin iframes. Radios show as `Question → Option` |
+| `b form` | ONE call: every field of the open dialog/form with kind, label, required `*`, value, options. Numbers work with fill/click |
+| `b fillform @answers.json` | fill a whole page from `{"label": "value"}`: text, selects, radios, checkboxes, comboboxes, files. Prints what didn't match |
 | `b find TEXT` | filter the last `el` list |
-| `b click N\|TEXT` | JS click (fast, invisible) |
+| `b click N\|TEXT` | JS click (fast, invisible); reports `→ navigated`, `→ page changed` or `→ no change yet` |
 | `b rclick N\|TEXT [2]` | REAL mouse click (trusted event; 2 = double) — use when JS click is ignored |
-| `b fill N\|LABEL VALUE` | set value of input/textarea/contenteditable (React-safe) |
+| `b fill N\|LABEL\|#id VALUE` | set value of input/textarea/contenteditable (React-safe). Exact label > #id/name > prefix > substring; refuses ambiguous labels and prints which field it hit |
+| `b pick N\|LABEL TEXT` | choose in a react-select combobox (Greenhouse, Lever, Ashby: Country, Location...). Async options OK, bg-safe |
+| `b choose QUESTION OPTION` | tick a radio/checkbox under a question (LinkedIn Easy Apply etc.), verifies it stuck |
 | `b type N\|LABEL VALUE` | REAL keyboard: click field, select all, paste value — when fill doesn't stick |
 | `b key COMBO...` | real keys: `enter esc tab down cmd+a cmd+shift+t cmd+l ...` |
-| `b select N\|LABEL OPT`, `b check N\|LABEL`, `b hover N\|TEXT` | native dropdowns, checkboxes, hover menus |
+| `b select N\|LABEL OPT`, `b check N\|LABEL [on\|off]`, `b hover N\|TEXT` | native dropdowns, checkboxes, hover menus |
 | `b scroll down\|up\|top\|bottom\|PX\|TEXT` | scroll page + main scroll panel, or to an element |
-| `b upload N\|LABEL\|- /path` | attach file/video via JS, no dialog, bg-safe (`-` = first file input; 50 MB ≈ 3s) |
+| `b upload N\|LABEL\|- /path` | attach file/video via JS, no dialog, bg-safe (`-` = first file input; 50 MB ≈ 3s). No file input (sites using showOpenFilePicker)? Target the upload BUTTON: it stages the file and clicks it |
+| `b upload NAME` | select a file the site already has (e.g. a saved LinkedIn resume) by name |
 | `b drop N\|TEXT /path` | drag-and-drop a file onto a drop zone, bg-safe |
 | `b rupload N\|LABEL /path` | real click + macOS file dialog (front window; only if `upload` is rejected) |
-| `b do 'cmd ; cmd ; cmd'` | batch steps in ONE call (auto 0.8s pause after click/go) — use it to save tool calls |
+| `b do 'cmd ; cmd ; cmd'` | batch steps in ONE call — use it to save tool calls. The rest of a fill line is the value: `do 'fill 3 Nadir Ali Khan'` |
 | `b console` | first call installs hook; next call prints recent errors/logs |
 | `b log [N]` | last N actions taken (time, browser, command) — show the user what was done |
+| `b until url~PART` / `until text TEXT` / `until gone TEXT` / `until 'JS'` `[sec]` | wait without writing JS |
 | `b wait TEXT [sec]` | wait until text appears |
-| `b js 'CODE'` | any JS, prints result |
+| `b js 'CODE'` | any JS (expression or statements), prints result; objects as JSON, `ERR: msg` on throw. Runs in an isolated world: page DOM yes, page JS variables no |
+| `b li jobs QUERY` / `b li job ID` | LinkedIn job search (id, title, company, place, Easy Apply) / one job summary in ~300 tokens |
 | `b ocr [FILTER]` | read the window's pixels as text ON-DEVICE (Apple Vision, ~0.7s, zero image tokens) → `x,y text` in page coords. For canvas, images, PDFs, charts, anything `text` misses |
 | `b clickat X Y` | click a page point from `ocr` (works in bg) · `b rclickat X Y` real mouse there |
 | `b bg on\|off\|close\|status` | BACKGROUND MODE: a hidden minimized window; never comes to front, nothing visible on screen. `off` parks it for instant reuse, `close` removes it |
@@ -39,7 +46,9 @@ Drive the user's real, logged-in Chrome from Bash. Everything is text. `BROWSER=
 
 Aliases: `t`=tail `x`=text `e`=el `c`=click `f`=fill `g`=go `o`=open `u`=url `k`=key `s`=scroll `w`=wait `up`=upload.
 
-Custom dropdowns (div-based): `click` to open, `el`, then `click` the option.
+Custom dropdowns (div-based): react-select → `pick`; others: `click` to open, `el`, then `click` the option.
+
+When a dialog/modal is open, `el`, `text`, `tail`, `form` and label lookups only see the dialog (add `all` for the whole page).
 
 ## Background mode (default for multi-step jobs)
 Run `b bg on` first so the user isn't disturbed, then `b go URL` etc. It shares the user's logins.
@@ -47,7 +56,7 @@ In bg mode real-input commands (`rclick`, `type`, `key`, `rupload`, `rclickat`) 
 `ocr`/`shot`/`tab`/`close` don't work in bg mode (the window is minimized); `go`/`back`/`reload` navigate from inside the page so the browser never activates.
 If a site truly needs real input or OCR, tell the user, `b bg off`, and do it in the front window. `b bg off` when done (parks the hidden window for reuse).
 The user can watch live: right-click the browser's Dock icon → window named "ghosttab". bg mode uses ONE hidden tab (adding tabs would pop the window up).
-If `b` says the background window is gone, stop — never fall back to the user's window silently.
+If the hidden window was closed, `b` opens a new blank one by itself and says so (go/open just continue); it never falls back to the user's window. If the hidden tab ignores a `go`, it's recreated once automatically.
 
 ## Token rules (most waste comes from the agent's own scripts, not page reads)
 - Never hand-write polling loops: use `b until 'JS condition' [sec]` or `b wait TEXT`.
@@ -56,6 +65,8 @@ If `b` says the background window is gone, stop — never fall back to the user'
 - Prefer `b e | grep -i word` over printing whole element lists; read with small `b t`/`b x` slices.
 - If something stalls, check one cause at a time; don't re-run big extractions.
 - Video uploads may need the window visible: Chrome pauses video in minimized windows.
+- Forms: `b form` → write answers.json → `b fillform @answers.json` → `b form` to verify. Two to three calls per page.
+- Slow pages: `B_TIMEOUT=90 b ...` (default 30s). After a timeout the action may still have happened: check before retrying.
 
 ## Workflow (cheap first)
 1. `b tabs` / `b url` to know where you are.
