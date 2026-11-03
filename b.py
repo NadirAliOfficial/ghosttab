@@ -94,7 +94,7 @@ const FIELD='input:not([type=hidden]),textarea,select,[contenteditable=true],[ro
 const T=s=>(s||'').replace(/\s+/g,' ').trim();
 const byId=(e,i)=>{const r=e.getRootNode();return (r.getElementById&&r.getElementById(i))||document.getElementById(i)};
 const isBox=e=>e.tagName=='INPUT'&&(e.type=='radio'||e.type=='checkbox');
-const isBoxy=e=>isBox(e)||/^(radio|checkbox)$/.test(e.getAttribute&&e.getAttribute('role')||'');
+const isBoxy=e=>isBox(e)||/^(radio|checkbox)$/.test(e.getAttribute&&e.getAttribute('role')||'')||(e.tagName.includes('-')&&/(^|-)(radio|checkbox)(-|$)/i.test(e.tagName)&&!e.parentElement.closest('[role=radio],[role=checkbox]'));
 function opt(e){if(e.labels&&e.labels[0]&&T(e.labels[0].innerText))return T(e.labels[0].innerText);
 const l=e.closest('label');if(l&&T(l.innerText))return T(l.innerText);
 for(let s=e.nextElementSibling;s;s=s.nextElementSibling)if(T(s.innerText))return T(s.innerText);
@@ -157,16 +157,16 @@ return i+' '+t+' '+(isBoxy(e)?ques(e).slice(0,60)+' → '+on(e).slice(0,40):lab(
 # One scan of the active form/dialog: kind, label, required, value, options. Sets window.__cx for numbers.
 SCAN = r'''function scan(){const R=scope();let root=R;if(!root){const af=document.activeElement&&document.activeElement.closest&&document.activeElement.closest('form');
 root=af||[...document.forms].filter(vis).sort((a,b)=>b.elements.length-a.elements.length)[0]||document}
-const a=deep(root,0,0,[]).filter(x=>{const e=x[0];return e.matches&&(e.matches(FIELD)||e.matches('[role=radio],[role=checkbox]')||(root!==document&&e.matches('button,[role=button]')))&&(vis(e)||e.type=='file')});
+const a=deep(root,0,0,[]).filter(x=>{const e=x[0];return e.matches&&(e.matches(FIELD)||e.matches('[role=radio],[role=checkbox]')||isBoxy(e)||(root!==document&&e.matches('button,[role=button]')))&&(vis(e)||e.type=='file')});
 window.__cx=a.map(x=>x[0]);window.__cxa=a;window.__root=root;
 return a.map(x=>{const e=x[0],role=e.getAttribute('role')||'';
-const k=e.tagName=='SELECT'?'select':e.tagName=='TEXTAREA'?'textarea':isBox(e)?e.type:/^(radio|checkbox)$/.test(role)?role:e.type=='file'?'file':
+const k=e.tagName=='SELECT'?'select':e.tagName=='TEXTAREA'?'textarea':isBox(e)?e.type:/^(radio|checkbox)$/.test(role)?role:isBoxy(e)?(/radio/i.test(e.tagName)?'radio':'checkbox'):e.type=='file'?'file':
 (e.tagName=='BUTTON'||role=='button'||/^(submit|button|reset|image)$/.test(e.type))?'button':(role=='combobox'||inst(e))?'combo':e.isContentEditable?'editor':'text';
 const l0=k=='button'?lab(e):flab(e),l=l0.replace(/\s*\*$/,'');let v='',o='';
 if(k=='select'){v=e.selectedIndex>=0?T(e.options[e.selectedIndex].text):'';o=[...e.options].map(o=>T(o.text)).filter(Boolean);o=o.length>30?o.length+' options':o.slice(0,12).join(', ')+(o.length>12?' +'+(o.length-12):'')}
 else if(k=='combo'){let s=null;for(let p=e.parentElement,j=0;p&&!s&&j<5;j++,p=p.parentElement)s=p.querySelector('[class*=singleValue],[class*=single-value],[class*=multiValue],[class*=multi-value]');v=s?T(s.innerText):e.value}
 else if(k=='file')v=e.files&&e.files.length?e.files[0].name:'';else if(k=='editor')v=T(e.innerText);
-else if(k=='radio'||k=='checkbox')v=e.tagName=='INPUT'?e.checked:e.getAttribute('aria-checked')=='true';else if(k!='button')v=e.value;
+else if(k=='radio'||k=='checkbox')v=e.tagName=='INPUT'||typeof e.checked=='boolean'?!!e.checked:e.getAttribute('aria-checked')=='true';else if(k!='button')v=e.value;
 return {k,l,q:(k=='radio'||k=='checkbox')?ques(e):'',o:(k=='radio'||k=='checkbox')?on(e):o,v,r:!!(e.required||e.getAttribute('aria-required')=='true'||/\*\s*$/.test(l0)),d:!!e.disabled}})}'''
 
 FORM = r'''const it=scan();const out=[];let g=null;const R=window.__root;window.__gtForm=dsig(scope());
@@ -212,7 +212,7 @@ const c=bx.filter(e=>ques(e).toLowerCase().includes(q));
 if(!c.length)return 'no question like "'+Q+'"; have: '+[...new Set(bx.map(ques))].slice(0,8).join(' | ');
 const e=c.find(e=>on(e).toLowerCase()==o)||c.find(e=>on(e).toLowerCase().startsWith(o))||c.find(e=>on(e).toLowerCase().includes(o));
 if(!e)return 'no option "'+O+'"; have: '+c.map(on).join(', ');
-const st=()=>e.tagName=='INPUT'?e.checked:e.getAttribute('aria-checked')=='true';e.scrollIntoView({block:'center'});const lb=e.labels&&e.labels[0];
+const st=()=>e.tagName=='INPUT'||(e.tagName.includes('-')&&typeof e.checked=='boolean')?e.checked:e.getAttribute('aria-checked')=='true'||e.hasAttribute('checked');e.scrollIntoView({block:'center'});const lb=e.labels&&e.labels[0];
 const fire=x=>{['pointerdown','mousedown','pointerup','mouseup'].forEach(t=>x.dispatchEvent(new MouseEvent(t,{bubbles:true})));x.click()};
 if(!st())fire(e);if(!st()&&lb)fire(lb);
 if(!st()&&e.tagName=='INPUT'){Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'checked').set.call(e,true);['click','input','change'].forEach(t=>e.dispatchEvent(new Event(t,{bubbles:true})))}
@@ -1226,7 +1226,10 @@ let t;try{t=itext(r)}finally{hid.forEach(e=>e.style.display=e.__d)}return (R?'[d
             'click': FINAL + ';' + SIG + 'e.scrollIntoView({block:"center"});e.click();return "clicked: "+lab(e).slice(0,60)+(FIN?" |FIN| "+FIN:"")',
             'hover': 'e.scrollIntoView({block:"center"});["pointerover","mouseover","mouseenter","pointermove","mousemove"].forEach(t=>e.dispatchEvent(new MouseEvent(t,{bubbles:true})));return "hovered: "+lab(e).slice(0,60)',
             'fill': '''const v=%s;if(!e.matches(FIELD)&&!e.isContentEditable){const c=ctlOf(e);if(c)e=c}if(!(e.matches('input,textarea')&&!isBox(e)&&e.type!='file')&&!e.isContentEditable)return "not a text field: "+e.tagName.toLowerCase()+" "+lab(e).slice(0,50)+" (use b form for field numbers)";if(e.readOnly||e.disabled)return "field is read-only/disabled: "+flab(e).slice(0,50);if(e.matches('input[aria-autocomplete=list],[class*=select__input] input,input[class*=select__input]'))return "USEPICK";e.focus();
-if(e.isContentEditable){document.execCommand("selectAll");const L=v.split("\\n");L.forEach((l,i)=>{if(l)document.execCommand("insertText",false,l);if(i<L.length-1)document.execCommand("insertParagraph")})}
+if(e.isContentEditable){document.execCommand("selectAll");
+const dt=new DataTransfer();dt.setData("text/plain",v);dt.setData("text/html",v.split("\\n").map(l=>"<p>"+(l.replace(/&/g,"&amp;").replace(/</g,"&lt;")||"<br>")+"</p>").join(""));
+const pe=new ClipboardEvent("paste",{clipboardData:dt,bubbles:true,cancelable:true,composed:true});e.dispatchEvent(pe);
+if(!pe.defaultPrevented){const L=v.split("\\n");L.forEach((l,i)=>{if(l)document.execCommand("insertText",false,l);if(i<L.length-1)document.execCommand("insertParagraph")})}}
 else{const p=e.tagName=="TEXTAREA"?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;Object.getOwnPropertyDescriptor(p,"value").set.call(e,v);
 e.dispatchEvent(new Event("input",{bubbles:true}));e.dispatchEvent(new Event("change",{bubbles:true}))}
 return "filled "+e.tagName.toLowerCase()+" \\""+flab(e).slice(0,40)+"\\" ("+v.length+" chars)"''' % v,

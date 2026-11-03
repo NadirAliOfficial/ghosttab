@@ -85,6 +85,11 @@ With the extension, bg mode has its own hidden tabs: `open URL` (new hidden tab)
 6. Repeat jobs on one site: one `b js` that extracts exactly the fields needed.
 7. Visual-only content: `b ocr` (text + coordinates, no image tokens) → `b clickat X Y`. `b shot` only if OCR can't answer, and say why.
 
+## Cost rules (hard)
+- NEVER `b shot` unless the user asks to see the page: one screenshot costs more than 20 text reads. Use `b form`, `b el`, `b t 400`, `b ocr FILTER`.
+- Rich editors (Reddit, LinkedIn, X, Gmail): `b fill FIELD @file.txt` keeps paragraphs and won't turn @words into mentions. Never paste through the real clipboard.
+- Plan the whole form once (`b form`, then `b fillform @answers.json`) instead of field by field. Batch steps with `b do 'a ; b ; c'`.
+
 ## Feedback (always)
 When `b` was slow, failed, misread a page, or you had to work around it (extra calls, a `b js` hack, a shell loop), report it in one line right away: `b fb "li apply: stuck on X page, had to click Next by number"`. Also report ideas that would save calls. Durations and errors are logged automatically (`b stats`).
 
