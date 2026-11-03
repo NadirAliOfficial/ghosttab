@@ -43,6 +43,7 @@ Drive the user's real, logged-in Chrome from Bash. Everything is text. `BROWSER=
 | `b li apply ID [CVNAME]` | opens Easy Apply (or Continue on a draft), picks the saved CV, presses Next through contact/resume pages, stops at questions (prints only the fields, unanswered ones, errors) or review. Never submits. Drafts resumed via Continue lose an uploaded cover letter: re-upload |
 | `b save N\|TEXT\|.sel\|URL OUT` | download an image, link or canvas with the user's login (cross-site too) |
 | `b gpt image @prompt.txt OUT.png` | ChatGPT: new chat, send, wait for the image, save it full size (one call) |
+| `b tags N\|LABEL a,b,c` | tag/chip inputs (dev.to, Medium, job skills): types each tag + Enter so each becomes its own chip. Don't use fill for these |
 | `b yt pin VIDEO_ID COMMENT_ID` | pin a comment on the user's video (hidden tab; lazy comments load) |
 | `b yt related SHORT_ID TARGET` | YouTube Studio: set a Short's Related video (TARGET = video id or title words) and Save. Needs the channel owner signed in |
 | `b li review` | compact review page: progress, CV name, answers |

@@ -700,6 +700,7 @@ USAGE = '''commands:
  fillform @answers.json   fill a whole page {label: value}; radios, selects, comboboxes, files
  click N|TEXT        js click            rclick N|TEXT [2]   real mouse click (double with 2)
  fill N|LABEL VALUE  set value           type N|LABEL VALUE  real keyboard (focus + paste)
+ tags N|LABEL a,b,c  tag/chip inputs: types each tag + Enter (dev.to, Medium)
  select N|LABEL OPT | check N|LABEL [on|off] | hover N|TEXT | enter N|LABEL
  pick N|LABEL TEXT   choose in a react-select combobox (Greenhouse/Lever/Ashby), bg-safe
  choose QUESTION OPTION   tick the radio/checkbox OPTION under QUESTION, verifies it stuck
@@ -734,7 +735,7 @@ USAGE = '''commands:
 
 LOG = os.path.join(HERE, 'activity.log')
 MINE = os.path.join(HERE, '.mine-' + APP.split()[0].lower())
-ACTS = {'go', 'open', 'back', 'reload', 'close', 'tab', 'click', 'rclick', 'fill', 'type', 'select', 'check', 'enter',
+ACTS = {'tags', 'go', 'open', 'back', 'reload', 'close', 'tab', 'click', 'rclick', 'fill', 'type', 'select', 'check', 'enter',
         'key', 'upload', 'drop', 'rupload', 'clickat', 'rclickat', 'scroll', 'hover', 'js', 'bg', 'pick', 'choose', 'fillform'}
 ALIAS = {'t': 'tail', 'x': 'text', 'e': 'el', 'c': 'click', 'f': 'fill', 'g': 'go', 'o': 'open', 'u': 'url',
          'k': 'key', 's': 'scroll', 'w': 'wait', 'up': 'upload'}
@@ -1348,6 +1349,19 @@ if(e.form&&e.form.requestSubmit)e.form.requestSubmit();return "enter pressed"'''
             key('cmd+a')
             paste(a[2])
         print('typed %d chars' % len(a[2]))
+    elif c == 'tags':
+        # chip/tag inputs (dev.to, Medium, job forms): type each tag and press Enter so each becomes its own chip
+        if not xin():
+            sys.exit('tags needs the GhostTab extension (b ext status)')
+        tags = [t.strip() for t in a[2].split(',') if t.strip()]
+        x, y = point(a[1])
+        x_click(x, y)
+        for t in tags:
+            ext('type', text=t)
+            time.sleep(0.5)
+            x_key('enter')
+            time.sleep(0.4)
+        print('added %d tags: %s (check with b form)' % (len(tags), ', '.join(tags)))
     elif c == 'key' and xin():
         if not xbg():
             front_check()

@@ -28,4 +28,6 @@ b js 'document.querySelector("h3").textContent="Other";1' >/dev/null
 ok "$(b c 'Submit application')" "dialog changed" final-stale
 b go 'data:text/html,<dialog open style="width:300px;height:150px"><h2 style="position:absolute;width:1px;height:1px;overflow:hidden">0 notifications</h2>You reached today limit<button>Got it</button></dialog>' >/dev/null
 ok "$(b el)" "Got it" dlg-srheading
+b go 'data:text/html,<input id=t placeholder=Tags><p id=o></p><script>t.onkeydown=e=>{if(e.key=="Enter"){o.textContent+="["+t.value+"]";t.value=""}}</script>' >/dev/null
+ok "$(b tags Tags 'ai, python,go' >/dev/null; b x 0 100)" "\[ai\]\[python\]\[go\]" tags
 rm -rf "$T"; exit ${FAIL:-0}
