@@ -265,6 +265,12 @@ def osa(*args, wid=None, soft=False):
 SOCK = os.path.expanduser('~/.ghosttab/%s.sock' % ('brave' if 'Brave' in APP else 'chrome'))
 
 
+# one set of agent tabs per Claude session, so parallel sessions never share a tab
+SID = os.environ.get('B_SESSION') or os.environ.get('CLAUDE_CODE_SESSION_ID') or os.environ.get('CLAUDE_PID') or 'default'
+_cwd = os.path.basename(os.getcwd())
+SNAME = os.environ.get('B_NAME') or ('GhostTab ' + _cwd if _cwd not in ('', os.path.basename(os.path.expanduser('~'))) else 'GhostTab')
+
+
 class ExtDown(Exception):
     pass
 
@@ -279,7 +285,7 @@ def ext(op, timeout=None, **kw):
         s.connect(SOCK)
     except OSError:
         raise ExtDown()
-    kw.update(op=op, bg=bool(bgwin()), timeout=t)
+    kw.update(op=op, bg=bool(bgwin()), timeout=t, s=SID, name=SNAME)
     s.sendall((json.dumps(kw) + '\n').encode())
     buf = b''
     try:
@@ -1497,8 +1503,9 @@ return "clicked: "+(e.innerText||e.getAttribute("aria-label")||e.tagName).replac
                         ext('closeghost') if w == 'ext' else osa('closewin', wid=w)
                     except (ExtDown, RuntimeError):
                         pass
-                    os.remove(f)
-            print('hidden window closed')
+                    if w != 'ext':  # ext mode is shared by all sessions; close only removed this session's tabs
+                        os.remove(f)
+            print('agent tabs closed' if xbg() else 'hidden window closed')
         else:
             if xbg():
                 try:

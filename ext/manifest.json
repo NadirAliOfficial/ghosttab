@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "GhostTab",
-  "version": "1.4",
+  "version": "1.5",
   "description": "Lets the b CLI drive tabs with real clicks, keys and file uploads in the background.",
   "permissions": ["debugger", "tabs", "storage", "nativeMessaging", "tabGroups"],
   "background": {"service_worker": "bg.js"},
