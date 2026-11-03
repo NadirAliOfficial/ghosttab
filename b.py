@@ -933,6 +933,32 @@ def main(a=None):
 def run(c, a):
     if c in REST and len(a) > 3:
         a = a[:2] + [' '.join(a[2:])]
+    if c == 'fb':
+        with open(FEEDBACK, 'a') as fh:
+            fh.write('%s | %s | %s\n' % (time.strftime('%Y-%m-%d %H:%M'), os.path.basename(os.getcwd()), ' '.join(a[1:])))
+        print('thanks, noted for the GhostTab maintainer')
+        return
+    if c == 'stats':
+        try:
+            L = [l.rstrip('\n').split('\t') for l in open(STATS)][-2000:]
+        except OSError:
+            L = []
+        agg = {}
+        for l in L:
+            if len(l) < 5:
+                continue
+            k = l[3].split(' ')[0]
+            d = agg.setdefault(k, [0, 0, 0])
+            d[0] += 1
+            d[1] += int(l[2])
+            d[2] += bool(l[4])
+        print('cmd calls avg_ms errors')
+        for k, (n, ms, e) in sorted(agg.items(), key=lambda x: -x[1][1]):
+            print('%s %d %d %d' % (k, n, ms // n, e))
+        errs = [l for l in L if len(l) > 4 and l[4]][-15:]
+        if errs:
+            print('\nrecent errors:\n' + '\n'.join('%s %s: %s' % (l[0], l[3][:50], l[4][:100]) for l in errs))
+        return
     if c == 'log':
         try:
             lines = open(LOG).read().splitlines()
@@ -1292,5 +1318,36 @@ return "clicked: "+(e.innerText||e.getAttribute("aria-label")||e.tagName).replac
         sys.exit('unknown command ' + c + '\n' + USAGE)
 
 
+STATS = os.path.join(HERE, 'stats.log')
+FEEDBACK = os.path.join(HERE, 'feedback.log')
+
+
+def top():
+    # every top-level call: duration and outcome, so slow or failing commands show up without anyone reporting them
+    t0, err = time.time(), ''
+    out = []
+    w = sys.stdout.write
+    sys.stdout.write = lambda x: (out.append(x) if len(out) < 50 else None, w(x))[1]
+    try:
+        main()
+    except SystemExit as e:
+        err = '' if e.code in (None, 0) else str(e.code)
+        raise
+    except Exception as e:
+        err = '%s: %s' % (type(e).__name__, e)
+        raise
+    finally:
+        o = ''.join(out)
+        if not err and re.search(r'(?m)^(not found|REFUSED|ERR|no such|ambiguous|timeout|page did not|not a |NOT |no (Easy|saved|file|form|jobs|dialog)|== STUCK)', o):
+            err = re.search(r'(?m)^(not found|REFUSED|ERR|no such|ambiguous|timeout|page did not|not a |NOT |no (Easy|saved|file|form|jobs|dialog)|== STUCK).*', o).group(0)
+        try:
+            a = sys.argv[1:]
+            with open(STATS, 'a') as fh:
+                fh.write('%s\t%s\t%d\t%s\t%s\n' % (time.strftime('%m-%d %H:%M:%S'), 'brave' if 'Brave' in APP else 'chrome',
+                                                     (time.time() - t0) * 1000, ' '.join(x[:40] for x in a)[:120], err.replace('\n', ' ')[:160]))
+        except OSError:
+            pass
+
+
 if __name__ == '__main__':
-    main()
+    top()
