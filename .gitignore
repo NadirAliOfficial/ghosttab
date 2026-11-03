@@ -9,3 +9,4 @@ submits.log
 stats.log
 feedback.log
 .fb-seen
+.off-*

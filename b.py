@@ -233,7 +233,8 @@ CMD = ['']
 
 def bgwin():
     try:
-        return open(BGFILE).read().strip()
+        w = open(BGFILE).read().strip()
+        return '' if w == 'ext' and os.path.exists(OFF) else w
     except OSError:
         return ''
 
@@ -268,6 +269,7 @@ SOCK = os.path.expanduser('~/.ghosttab/%s.sock' % ('brave' if 'Brave' in APP els
 # one set of agent tabs per Claude session, so parallel sessions never share a tab
 SID = os.environ.get('B_SESSION') or os.environ.get('CLAUDE_CODE_SESSION_ID') or os.environ.get('CLAUDE_PID') or 'default'
 _cwd = os.path.basename(os.getcwd())
+OFF = os.path.join(HERE, '.off-' + SID[:40])  # bg off is per session in extension mode
 SNAME = os.environ.get('B_NAME') or ('GhostTab ' + _cwd if _cwd not in ('', os.path.basename(os.path.expanduser('~'))) else 'GhostTab')
 
 
@@ -976,10 +978,56 @@ def tclick(find, **v):
     return 'ok' if out == 'JS' else out
 
 
+RELTRIG = """const g=[...document.querySelectorAll('ytcp-dropdown-trigger')].find(x=>/^Related video/i.test(T(x.innerText)));"""
+
+
+def yt_related(vid, target):
+    """Studio: set a Short's Related video to TARGET (id or title words) and save."""
+    main(['go', 'https://studio.youtube.com/video/%s/edit' % vid])
+    if not js_until('(()=>{%s;%s;return g})()' % (DEEP.replace('BACKING', '2'), RELTRIG), 30):
+        sys.exit('no "Related video" field (not a Short, wrong channel signed in, or Studio did not load)')
+    r = tclick(RELTRIG + 'return g')
+    if r != 'ok':
+        sys.exit(r)
+    if not js_until('(()=>{const i=[...document.querySelectorAll("input")].find(x=>x.placeholder=="Search your videos"||x.getAttribute("aria-label")=="Search your videos");return i&&i.checkVisibility()})()', 10):
+        sys.exit('video picker did not open')
+    main(['fill', 'Search your videos', target])
+    card, prev, now = '', None, ''
+    for _ in range(30):  # wait until the filtered list stops changing
+        time.sleep(0.5)
+        card = page(r"""const d=[...document.querySelectorAll('ytcp-entity-card')].filter(vis);return d.length+'|'+(d[0]?T(d[0].innerText).split('\n')[0]:'')""")
+        if card == prev and '|' in card and not card.startswith('0|'):
+            break
+        prev = card
+    if not card.split('|')[0].isdigit() or card.startswith('0|'):
+        sys.exit('no video matches "%s" in the picker' % target)
+    for _ in range(3):
+        tclick("return [...document.querySelectorAll('ytcp-entity-card')].filter(vis)[0]||''")
+        time.sleep(1.5)
+        now = page(RELTRIG + r"return g?T(g.innerText).replace(/^Related video\s*/i,''):''")
+        if now and now.lower() != 'none':
+            break
+    else:
+        sys.exit('clicked "%s" but the field still says None' % card.split('|', 1)[1])
+    if os.environ.get('B_DRY'):
+        print('dry run: selected %s, not saved (Undo changes to discard)' % now)
+        return
+    tclick("return document.querySelector('ytcp-button#save')||'no Save button'")
+    for _ in range(30):
+        time.sleep(0.5)
+        if page("const b=document.querySelector('ytcp-button#save');return !b||b.hasAttribute('disabled')||b.getAttribute('aria-disabled')=='true'?1:0") == '1':
+            print('related video set: %s (saved)' % now)
+            return
+    sys.exit('selected "%s" but Save did not finish; check b t 300' % now)
+
+
 def yt(a):
-    """b yt pin VIDEO_ID COMMENT_ID : open the video with the comment highlighted and pin it."""
+    """b yt pin VIDEO_ID COMMENT_ID : open the video with the comment highlighted and pin it.
+    b yt related SHORT_ID TARGET : set the Short's Related video (TARGET = video id or title words) and save."""
+    if len(a) == 4 and a[1] == 'related':
+        return yt_related(a[2], a[3])
     if len(a) < 4 or a[1] != 'pin':
-        sys.exit('usage: b yt pin VIDEO_ID COMMENT_ID')
+        sys.exit('usage: b yt pin VIDEO_ID COMMENT_ID | b yt related SHORT_ID TARGET_ID')
     vid, cid = a[2], a[3]
     main(['go', 'https://www.youtube.com/watch?v=%s&lc=%s' % (vid, cid)])
     end = time.time() + 40
@@ -1460,6 +1508,8 @@ return "clicked: "+(e.innerText||e.getAttribute("aria-label")||e.tagName).replac
         m = a[1] if len(a) > 1 else 'status'
         if m == 'on':
             where = 'win' if a[2:3] == ['hidden'] else 'tab'
+            if os.path.exists(OFF):
+                os.remove(OFF)
             if bgwin() and not xbg():
                 print('bg already on (window %s)' % bgwin())
                 return
@@ -1495,6 +1545,10 @@ return "clicked: "+(e.innerText||e.getAttribute("aria-label")||e.tagName).replac
                 return
             print('bg on: hidden minimized window %s; never comes to front' % bg_new())
         elif m == 'off':
+            if xbg():
+                open(OFF, 'w').close()
+                print('bg off for this session only (other sessions keep their agent tabs)')
+                return
             if bgwin():
                 os.rename(BGFILE, BGFILE + '.parked')
             print('bg off: back to your front window (hidden window parked for reuse; b bg close removes it)')

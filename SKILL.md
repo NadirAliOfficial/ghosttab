@@ -44,6 +44,7 @@ Drive the user's real, logged-in Chrome from Bash. Everything is text. `BROWSER=
 | `b save N\|TEXT\|.sel\|URL OUT` | download an image, link or canvas with the user's login (cross-site too) |
 | `b gpt image @prompt.txt OUT.png` | ChatGPT: new chat, send, wait for the image, save it full size (one call) |
 | `b yt pin VIDEO_ID COMMENT_ID` | pin a comment on the user's video (hidden tab; lazy comments load) |
+| `b yt related SHORT_ID TARGET` | YouTube Studio: set a Short's Related video (TARGET = video id or title words) and Save. Needs the channel owner signed in |
 | `b li review` | compact review page: progress, CV name, answers |
 | `b close mine` | close the tabs `b open` made in your window (`open` also switches to an existing tab with the same URL) |
 | `b ocr [FILTER]` | read the window's pixels as text ON-DEVICE (Apple Vision, ~0.7s, zero image tokens) → `x,y text` in page coords. For canvas, images, PDFs, charts, anything `text` misses |
