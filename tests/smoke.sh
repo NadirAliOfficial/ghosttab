@@ -30,4 +30,6 @@ b go 'data:text/html,<dialog open style="width:300px;height:150px"><h2 style="po
 ok "$(b el)" "Got it" dlg-srheading
 b go 'data:text/html,<input id=t placeholder=Tags><p id=o></p><script>t.onkeydown=e=>{if(e.key=="Enter"){o.textContent+="["+t.value+"]";t.value=""}}</script>' >/dev/null
 ok "$(b tags Tags 'ai, python,go' >/dev/null; b x 0 100)" "\[ai\]\[python\]\[go\]" tags
+b go 'data:text/html,<p>You applied for one seat only per family.</p><form><input name=a placeholder=Name></form><button onclick="o.textContent=`sent`">Submit</button><p id=o></p>' >/dev/null
+ok "$(b c Submit --final)" "clicked" status-intro-text
 rm -rf "$T"; exit ${FAIL:-0}
