@@ -12,7 +12,7 @@ GhostTab is built for **AI agents**, not humans: Claude Code, Codex, or any agen
 What your agent runs:
 
 ```bash
-b bg on                          # work in a hidden window, your focus untouched
+b bg on                          # agent tab in your window (GhostTab group), never made active; `bg on hidden` = minimized window
 b go https://news.ycombinator.com
 b t 800                          # last 800 chars of page text
 b e                              # numbered clickable / fillable elements
@@ -63,7 +63,7 @@ Optional for real mouse/keyboard: System Settings → Privacy & Security → **A
 | `li apply ID [CV]` · `li review` | Easy Apply up to the questions or review page (never submits) / compact review |
 | `close mine` | close tabs `b open` made; `open` reuses a tab with the same URL |
 | `console` · `wait TEXT [sec]` · `js CODE` · `shot` | debug, waits, raw JS, last-resort screenshot |
-| `bg on\|off\|close\|status` | background mode (hidden, reusable) |
+| `bg on [hidden]\|off\|close\|status` | background mode: agent tab in your window, or a hidden window |
 | `do 'cmd ; cmd'` | batch |
 
 Aliases: `t`=tail `x`=text `e`=el `c`=click `f`=fill `g`=go `o`=open `u`=url `k`=key `s`=scroll `w`=wait `up`=upload.

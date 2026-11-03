@@ -706,7 +706,7 @@ USAGE = '''commands:
  console             recent console errors/logs (hook installs on first call)
  ocr [FILTER]        read the window's pixels as text on-device (no image tokens) -> "x,y text" page coords
  clickat X Y         click page point (from ocr), works in bg   rclickat X Y  real mouse click there
- bg on|off|close|status  hidden minimized window; never steals focus (off parks it, close removes)
+ bg on [hidden]|off|close|status  agent tab in your window, never active (hidden = minimized window); close removes
  until 'JS' [sec] | until url~PART [sec] | until text TEXT [sec] | until gone TEXT [sec]
  fill N|LABEL @file  fill from a file; newlines become paragraphs in rich editors (LinkedIn, Gmail...)
  li jobs QUERY [PLACE|geo=ID] [days=30] [all] [any]   Easy Apply jobs (any = all jobs; all = show Applied too)
@@ -1450,16 +1450,22 @@ return "clicked: "+(e.innerText||e.getAttribute("aria-label")||e.tagName).replac
     elif c == 'bg':
         m = a[1] if len(a) > 1 else 'status'
         if m == 'on':
-            if bgwin():
+            where = 'win' if a[2:3] == ['hidden'] else 'tab'
+            if bgwin() and not xbg():
                 print('bg already on (window %s)' % bgwin())
                 return
             if not os.environ.get('B_NOEXT') and os.path.exists(SOCK):
                 try:
                     ext('ping', timeout=3)
+                    try:
+                        ext('place', where=where)
+                    except RuntimeError:
+                        where = 'win'  # extension older than 1.4
                     open(BGFILE, 'w').write('ext')
                     if os.path.exists(BGFILE + '.parked') and open(BGFILE + '.parked').read().strip() == 'ext':
                         os.remove(BGFILE + '.parked')
-                    print('bg on: extension hidden tab (real clicks, keys and uploads work in bg)')
+                    print('bg on: ' + ('agent tab in your window ("GhostTab" group, never made active; watch it any time)' if where == 'tab'
+                                       else 'extension hidden minimized window') + '; real clicks, keys and uploads work')
                     return
                 except (ExtDown, RuntimeError):
                     pass
@@ -1494,7 +1500,14 @@ return "clicked: "+(e.innerText||e.getAttribute("aria-label")||e.tagName).replac
                     os.remove(f)
             print('hidden window closed')
         else:
-            print(('bg on (extension hidden tab)' if xbg() else 'bg on (window %s)' % bgwin()) if bgwin() else 'bg off')
+            if xbg():
+                try:
+                    w = ext('place', timeout=3)
+                except (ExtDown, RuntimeError):
+                    w = 'win'
+                print('bg on (' + ('agent tab in your window' if w == 'tab' else 'extension hidden window') + ')')
+                return
+            print((''if xbg() else 'bg on (window %s)' % bgwin()) if bgwin() else 'bg off')
     else:
         sys.exit('unknown command ' + c + '\n' + USAGE)
 

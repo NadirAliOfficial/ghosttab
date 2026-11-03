@@ -35,7 +35,50 @@ chrome.debugger.onEvent.addListener(async (s, m, p) => {
   cdp(s.tabId, 'Page.setInterceptFileChooserDialog', {enabled: false}).catch(() => {});
 });
 
+// place 'tab': agent tabs sit in the user's own window, never activated, in a "GhostTab" group (he can watch them)
+// place 'win': one minimized window (old behaviour)
+async function place() { return (await chrome.storage.local.get('place')).place || 'tab'; }
+
+async function gtabs() {
+  const {gt = []} = await chrome.storage.local.get('gt');
+  const live = [];
+  for (const id of gt) { try { await chrome.tabs.get(id); live.push(id); } catch (e) {} }
+  return live;
+}
+
+async function mainWin() {
+  const {gw} = await chrome.storage.local.get('gw');
+  const ws = (await chrome.windows.getAll({windowTypes: ['normal']})).filter(w => w.id !== gw && !w.incognito);
+  const w = ws.find(w => w.focused) || ws[0];
+  return w ? w.id : (await chrome.windows.create({url: 'about:blank', state: 'minimized', focused: false})).id;
+}
+
+async function addTab(url) {
+  const gt = await gtabs();
+  let windowId;
+  if (gt.length) windowId = (await chrome.tabs.get(gt[0])).windowId; else windowId = await mainWin();
+  const t = await chrome.tabs.create({windowId, url: url || 'about:blank', active: false});
+  try {
+    const {gg} = await chrome.storage.local.get('gg');
+    let groupId;
+    try { groupId = await chrome.tabs.group({tabIds: [t.id], ...(gg ? {groupId: gg} : {createProperties: {windowId}})}); }
+    catch (e) { groupId = await chrome.tabs.group({tabIds: [t.id], createProperties: {windowId}}); }
+    await chrome.storage.local.set({gg: groupId});
+    if (chrome.tabGroups) await chrome.tabGroups.update(groupId, {title: 'GhostTab', color: 'purple', collapsed: false});
+  } catch (e) {}
+  gt.push(t.id);
+  await chrome.storage.local.set({gt, gcur: t.id});
+  return t.id;
+}
+
 async function ghost(create = true) {
+  if (await place() === 'tab') {
+    const gt = await gtabs();
+    const {gcur} = await chrome.storage.local.get('gcur');
+    if (gt.includes(gcur)) return gcur;
+    if (gt.length) { await chrome.storage.local.set({gcur: gt[gt.length - 1]}); return gt[gt.length - 1]; }
+    return create ? addTab() : null;
+  }
   const {gw} = await chrome.storage.local.get('gw');
   if (gw) { try { const w = await chrome.windows.get(gw, {populate: true}); return (w.tabs.find(t => t.active) || w.tabs[0]).id; } catch (e) {} }
   if (!create) return null;
@@ -59,21 +102,31 @@ function out(v) {
 
 async function handle(m) {
   if (m.op === 'ping') return 'pong';
+  if (m.op === 'place') {
+    if (m.where) await chrome.storage.local.set({place: m.where});
+    return place();
+  }
   if (m.op === 'closeghost') {
-    const t = await ghost(false);
-    if (t) { const tab = await chrome.tabs.get(t); await chrome.windows.remove(tab.windowId); }
-    await chrome.storage.local.remove('gw');
+    for (const id of await gtabs()) await chrome.tabs.remove(id).catch(() => {});
+    const {gw} = await chrome.storage.local.get('gw');
+    if (gw) await chrome.windows.remove(gw).catch(() => {});
+    await chrome.storage.local.remove(['gw', 'gt', 'gcur', 'gg']);
     return 'closed';
   }
   if (m.op === 'reload') { setTimeout(() => chrome.runtime.reload(), 100); return 'reloading'; }
-  if (m.bg && /^(tabs|newtab|tab|closetab)$/.test(m.op)) {
+  if (m.bg && /^(tabs|newtab|tab|closetab)$/.test(m.op) && await place() === 'tab') {
     await ghost();
-    const {gw} = await chrome.storage.local.get('gw');
-    const tabs = await chrome.tabs.query({windowId: gw});
-    if (m.op === 'tabs') return tabs.map((t, i) => (i + 1) + ' | ' + t.title + ' | ' + t.url).join('\n') + '\nactive: ' + (tabs.findIndex(t => t.active) + 1);
-    if (m.op === 'newtab') { await chrome.tabs.create({windowId: gw, url: m.url, active: true}); return 'ok'; }
-    if (m.op === 'tab') { const t = tabs[m.i - 1]; if (!t) throw new Error('no tab ' + m.i); await chrome.tabs.update(t.id, {active: true}); return 'ok'; }
-    if (m.op === 'closetab') { if (tabs.length < 2) throw new Error('last hidden tab; use go instead'); await chrome.tabs.remove(tabs.find(t => t.active).id); return 'ok'; }
+    const gt = await gtabs(), {gcur} = await chrome.storage.local.get('gcur');
+    const tabs = await Promise.all(gt.map(id => chrome.tabs.get(id)));
+    if (m.op === 'tabs') return tabs.map((t, i) => (i + 1) + ' | ' + t.title + ' | ' + t.url).join('\n') + '\nactive: ' + (gt.indexOf(gcur) + 1);
+    if (m.op === 'newtab') { await addTab(m.url); return 'ok'; }
+    if (m.op === 'tab') { const id = gt[m.i - 1]; if (!id) throw new Error('no tab ' + m.i); await chrome.storage.local.set({gcur: id}); return 'ok'; }
+    if (m.op === 'closetab') {
+      if (gt.length < 2) throw new Error('last agent tab; use go instead');
+      await chrome.tabs.remove(gcur);
+      await chrome.storage.local.set({gt: gt.filter(i => i !== gcur), gcur: gt.filter(i => i !== gcur).pop()});
+      return 'ok';
+    }
   }
   const tabId = m.bg ? await ghost() : await front();
   if (m.op === 'nav') { await chrome.tabs.update(tabId, {url: m.url}); return 'ok'; }

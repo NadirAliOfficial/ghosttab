@@ -48,7 +48,7 @@ Drive the user's real, logged-in Chrome from Bash. Everything is text. `BROWSER=
 | `b close mine` | close the tabs `b open` made in your window (`open` also switches to an existing tab with the same URL) |
 | `b ocr [FILTER]` | read the window's pixels as text ON-DEVICE (Apple Vision, ~0.7s, zero image tokens) → `x,y text` in page coords. For canvas, images, PDFs, charts, anything `text` misses |
 | `b clickat X Y` | click a page point from `ocr` (works in bg) · `b rclickat X Y` real mouse there |
-| `b bg on\|off\|close\|status` | BACKGROUND MODE: a hidden minimized window; never comes to front, nothing visible on screen. `off` parks it for instant reuse, `close` removes it |
+| `b bg on [hidden]\|off\|close\|status` | BACKGROUND MODE: the agent works in its own tab in the user's window (purple "GhostTab" group), never made active, so he can watch but is never disturbed. `on hidden` = minimized window instead. `close` removes the agent tabs |
 | `b shot` | LAST RESORT: browser-window screenshot at 1200px → /tmp/b-shot.png |
 
 Aliases: `t`=tail `x`=text `e`=el `c`=click `f`=fill `g`=go `o`=open `u`=url `k`=key `s`=scroll `w`=wait `up`=upload.
