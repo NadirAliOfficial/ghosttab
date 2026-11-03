@@ -58,7 +58,7 @@ When a dialog/modal is open, `el`, `text`, `tail`, `form` and label lookups only
 Run `b bg on` first so the user isn't disturbed, then `b go URL` etc. It shares the user's logins.
 **With the GhostTab extension (installed in Chrome and Brave; `b ext status`)** bg mode uses the extension's hidden tab and EVERYTHING works there: `rclick`, `type`, `key`, `rclickat` send real (isTrusted) input, `upload`/`rupload` attach any file (also on LinkedIn and pages without a file input: it answers the file chooser), `ocr`/`shot` work. Never use the front window for these any more. The browser may show a "GhostTab started debugging this browser" bar while it works; it goes away 20s after the last command.
 Without the extension: real-input commands are refused in bg (use `click`, `fill`, `clickat`, `enter`) and `ocr`/`shot` need `b bg off`.
-`tab`/`close` don't work in bg mode (one hidden tab); `go`/`back`/`reload` navigate inside the page so the browser never activates.
+With the extension, bg mode has its own hidden tabs: `open URL` (new hidden tab), `tabs`, `tab N`, `close`. Without it, bg mode is one tab. Front mode with the extension also clicks/types through it, never the user's real mouse. `b ext reload` reloads the extension after an update (no UI).
 `b bg off` when done. If the hidden window was closed, `b` opens a new one by itself.
 
 ## Token rules (most waste comes from the agent's own scripts, not page reads)

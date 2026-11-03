@@ -37,7 +37,7 @@ chrome.debugger.onEvent.addListener(async (s, m, p) => {
 
 async function ghost(create = true) {
   const {gw} = await chrome.storage.local.get('gw');
-  if (gw) { try { const w = await chrome.windows.get(gw, {populate: true}); return w.tabs[0].id; } catch (e) {} }
+  if (gw) { try { const w = await chrome.windows.get(gw, {populate: true}); return (w.tabs.find(t => t.active) || w.tabs[0]).id; } catch (e) {} }
   if (!create) return null;
   const w = await chrome.windows.create({url: 'about:blank', state: 'minimized', focused: false});
   await chrome.storage.local.set({gw: w.id});
@@ -64,6 +64,16 @@ async function handle(m) {
     if (t) { const tab = await chrome.tabs.get(t); await chrome.windows.remove(tab.windowId); }
     await chrome.storage.local.remove('gw');
     return 'closed';
+  }
+  if (m.op === 'reload') { setTimeout(() => chrome.runtime.reload(), 100); return 'reloading'; }
+  if (m.bg && /^(tabs|newtab|tab|closetab)$/.test(m.op)) {
+    await ghost();
+    const {gw} = await chrome.storage.local.get('gw');
+    const tabs = await chrome.tabs.query({windowId: gw});
+    if (m.op === 'tabs') return tabs.map((t, i) => (i + 1) + ' | ' + t.title + ' | ' + t.url).join('\n') + '\nactive: ' + (tabs.findIndex(t => t.active) + 1);
+    if (m.op === 'newtab') { await chrome.tabs.create({windowId: gw, url: m.url, active: true}); return 'ok'; }
+    if (m.op === 'tab') { const t = tabs[m.i - 1]; if (!t) throw new Error('no tab ' + m.i); await chrome.tabs.update(t.id, {active: true}); return 'ok'; }
+    if (m.op === 'closetab') { if (tabs.length < 2) throw new Error('last hidden tab; use go instead'); await chrome.tabs.remove(tabs.find(t => t.active).id); return 'ok'; }
   }
   const tabId = m.bg ? await ghost() : await front();
   if (m.op === 'nav') { await chrome.tabs.update(tabId, {url: m.url}); return 'ok'; }

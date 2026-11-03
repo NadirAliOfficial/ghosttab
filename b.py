@@ -123,7 +123,8 @@ try{return r.innerText}finally{sl.forEach(([s,sp])=>{s.style.display=s.__d;sp.re
 const STATUS=/^(application (was )?(submitted|sent)|your application was sent.{0,40}|applied|applied (on .{1,20}|\d+ \w+ ago)|you applied.{0,40})$/i;
 const stat=r=>[...(r||document).querySelectorAll('h1,h2,h3,h4,h5,span,p,div,strong,li')].some(x=>x.childElementCount<=3&&T(x.innerText).length<80&&STATUS.test(T(x.innerText))&&!x.closest('label,legend,fieldset,[role=radiogroup],[role=group],form')&&vis(x));
 const dsig=R=>R?T((R.querySelector('h1,h2,h3')||R).innerText).slice(0,80)+'|'+R.querySelectorAll(FIELD).length:'';
-function scope(){if(window.__gtAll)return null;const d=[...document.querySelectorAll('[role=dialog],[aria-modal=true],dialog[open]')].filter(e=>{const r=e.getBoundingClientRect();return r.width>80&&r.height>80&&getComputedStyle(e).visibility!='hidden'});return d.length?d[d.length-1]:null}
+function scope(){if(window.__gtAll)return null;const d=[...document.querySelectorAll('[role=dialog],[aria-modal=true],dialog[open]')].filter(e=>{const r=e.getBoundingClientRect();return r.width>80&&r.height>80&&getComputedStyle(e).visibility!='hidden'&&!/^\d+ notifications?\b/i.test(T(e.getAttribute('aria-label')||(e.querySelector('h1,h2,h3')||{}).innerText||''))});
+const m=d.filter(e=>e.matches('[aria-modal=true],dialog[open]'));return m.length?m[m.length-1]:d.length?d[d.length-1]:null}
 function ctlOf(e){if(e.matches(FIELD))return e;if(e.tagName=='LABEL'){if(e.control)return e.control;const x=e.querySelector(FIELD);if(x)return x}
 for(let p=e,i=0;p&&i<4;i++,p=p.parentElement){const x=[...p.querySelectorAll(FIELD)].filter(x=>vis(x)||x.type=='file');if(x.length==1)return x[0];if(x.length>1)break}return null}
 function cx(q,form){window.__cxerr='';if(/^\d+$/.test(q))return (window.__cx||[])[+q];const root=scope()||document;
@@ -298,6 +299,11 @@ def ext(op, timeout=None, **kw):
 
 def xbg():
     return bgwin() == 'ext'
+
+
+def xin():
+    """Send clicks/keys through the extension (never the user's real mouse) whenever it is connected."""
+    return xbg() or (not bgwin() and not os.environ.get('B_NOEXT') and os.path.exists(SOCK))
 
 
 def js(code, soft=False):
@@ -505,9 +511,12 @@ SUBMITS = os.path.join(HERE, 'submits.log')
 
 
 def fin_log(out):
-    if ' |FIN| ' not in out:
+    if ' |FIN|' not in out:
         return out
-    out, info = out.split(' |FIN| ', 1)
+    out, info = out.split(' |FIN|', 1)
+    info = info.strip()
+    if not info:
+        return out
     if not out.startswith('REFUSED'):
         with open(SUBMITS, 'a') as fh:
             fh.write('%s %s %s\n' % (time.strftime('%Y-%m-%d %H:%M:%S'), 'brave' if 'Brave' in APP else 'chrome', info))
@@ -565,14 +574,14 @@ def point(q, final=False):
     if not xbg():
         no_bg('real input')
         front_check()
-    P = ('const vp=()=>{%s};' % VPOS, 'vp()') if xbg() else ('', 'JSON.stringify(pos(e))')
+    P = ('const vp=()=>{%s};' % VPOS, 'vp()') if xin() else ('', 'JSON.stringify(pos(e))')
     out = target(q, P[0] + (FINAL + ';return ' + P[1] + '+" |FIN| "+FIN' if final else 'return ' + P[1]), real=True, **FLAGS)
-    if final and ' |FIN| ' in out:
-        out, info = out.split(' |FIN| ', 1)
-        PENDING[0] = info
+    if final and ' |FIN|' in out:
+        out, info = out.split(' |FIN|', 1)
+        PENDING[0] = info.strip()
     if not out.startswith('['):
         sys.exit(out)
-    if not xbg():
+    if not xin():
         osa('front')
         time.sleep(0.3)
     return json.loads(out)
@@ -736,7 +745,7 @@ if(f.k=='select')return !/^\d+ options$/.test(f.o)&&!/@/.test(f.v);if(f.k=='text
 const v=String(f.v);return v===''||/\?/.test(f.l)||/^\d{1,2}$/.test(v)});
 const ct=fl.some(f=>f.k=='select'&&(/^\d+ options$/.test(f.o)||/@/.test(f.v)));const kind=ct?'contact':qf.length?'questions':fl.some(f=>f.k=='file'||fn.test(f.o||''))||[...R?R.querySelectorAll('*'):[]].some(x=>!x.children.length&&fn.test(x.textContent||''))?'resume':fl.length?'contact':'profile';
 const cl=!fl.length&&[...R?R.querySelectorAll('a,button'):[]].find(b=>vis(b)&&/continue|weiter|dalej|continuer|continuar/i.test(T(b.innerText)));
-if(cl)cl.setAttribute('data-gtcont','1');return JSON.stringify({dlg:!!R,h,pr,req,kind,cont:!!cl,next:nx?T(nx.innerText):'',submit:!!sub,done:R?stat(R):false,
+if(cl)cl.setAttribute('data-gtcont','1');return JSON.stringify({limit:/easy apply limit|reached today.{0,20}limit/i.test(t),dlg:!!R,h,pr,req,kind,cont:!!cl,next:nx?T(nx.innerText):'',submit:!!sub,done:R?stat(R):false,
 review:!!sub||/^(100|(\d+)\/\2)$/.test(pr)||/review your application/i.test(t),resume:/upload resume|^resume$/im.test(t)||[...R?R.querySelectorAll('*'):[]].some(x=>!x.children.length&&/\.(pdf|docx?)\b/i.test(x.textContent||'')),sig:dsig(R),err})"""
 
 LIREVIEW = r"""const R=scope();if(!R)return 'no Easy Apply dialog open';window.__gtForm=dsig(R);const fn=/\.(pdf|docx?)\b/i;
@@ -760,6 +769,9 @@ return T(t.slice(i,j>i?Math.min(j,i+500):i+500))+'\nEasy Apply: '+(ea?'yes':'no'
         return
     if a[1] == 'review':
         print(page(SCAN + ';' + LIREVIEW))
+        return
+    if a[1] == 'limit':
+        print('DAILY LIMIT reached (dialog on this page)' if js('/easy apply limit|reached today.{0,20}limit/i.test(document.body.innerText)') == 'true' else 'no Easy Apply limit message on this page')
         return
     if a[1] == 'apply':
         return li_apply(a[2], ' '.join(a[3:]))
@@ -791,7 +803,7 @@ def li_apply(jid, cv):
     js_until('document.querySelector("h1")', 15)
     st = page(r"""const m=document.querySelector('main')||document.body;
 let top=document.querySelector('h1');for(let i=0;top&&i<5;i++)top=top.parentElement;if(stat(top||m))return 'ALREADY';
-const b=deep(m,0,0,[]).map(x=>x[0]).filter(e=>e.matches&&e.matches('button,a')&&vis(e)&&/^(easy apply|continue)\b/i.test(lab(e)));
+const b=deep(document,0,0,[]).map(x=>x[0]).filter(e=>e.matches&&e.matches('button,a,[role=button]')&&vis(e)&&/^(easy apply|continue)\b/i.test(lab(e))&&!e.closest('[role=dialog],nav,header'));
 if(!b.length)return 'NOBUTTON';b[0].click();return lab(b[0])""")
     if st in ('ALREADY', 'NOBUTTON'):
         print({'ALREADY': 'already applied to %s' % jid, 'NOBUTTON': 'no Easy Apply / Continue button on %s' % jid}[st])
@@ -805,10 +817,13 @@ if(!b.length)return 'NOBUTTON';b[0].click();return lab(b[0])""")
         while True:
             time.sleep(0.5)
             s = json.loads(page(SCAN + ';' + LISTEP))
-            if s['next'] or s['pr'] or s['review'] or s['cont'] or s['done'] or time.time() > end:
+            if s['next'] or s['pr'] or s['review'] or s['cont'] or s['done'] or s['limit'] or time.time() > end:
                 break
         if not s['dlg']:
             print('Easy Apply dialog did not open (b t 600)')
+            return
+        if s['limit']:
+            print('== DAILY LIMIT: LinkedIn says today\'s Easy Apply limit is reached. Save jobs and continue tomorrow')
             return
         if s['done']:
             print('application already sent (dialog says so)')
@@ -864,6 +879,9 @@ def ext_cmd(m):
             print('%s: native host registered' % name)
         print('Now in each browser: open chrome://extensions (brave://extensions), turn on Developer mode, Load unpacked -> %s\n'
               'Then: b ext status, b bg close, b bg on' % os.path.join(HERE, 'ext'))
+        return
+    if m == 'reload':
+        print(ext('reload', timeout=3))
         return
     try:
         print('extension connected (%s)' % ext('ping', timeout=3))
@@ -926,7 +944,17 @@ def run(c, a):
         args = ' '.join(x if len(x) < 70 else x[:67] + '...' for x in a[1:])
         with open(LOG, 'a') as fh:
             fh.write('%s %s%s %s %s\n' % (time.strftime('%m-%d %H:%M:%S'), ('brave' if 'Brave' in APP else 'chrome'), ' bg' if bgwin() else '', c, args))
-    if bgwin() and c in ('open', 'go', 'back', 'reload'):
+    if xbg() and c in ('tabs', 'tab', 'open', 'close'):
+        if c == 'open':
+            ext('newtab', url=a[1] if '://' in a[1] else 'https://' + a[1])
+            time.sleep(0.5)
+            js_until('document.readyState!="loading"&&location.href!="about:blank"', 20)
+        try:
+            out = ext({'tabs': 'tabs', 'tab': 'tab', 'open': 'tabs', 'close': 'closetab'}[c], **({'i': int(a[1])} if c == 'tab' else {})) if c != 'open' else 'ok'
+        except RuntimeError as e:
+            out = str(e)
+        print(out)
+    elif bgwin() and c in ('open', 'go', 'back', 'reload'):
         bg_nav(c, a[1] if len(a) > 1 else '')
     elif bgwin() and c in ('tab', 'close', 'front'):
         sys.exit('%s not available in bg mode (single hidden tab); use go' % c)
@@ -1048,12 +1076,12 @@ if(e.form&&e.form.requestSubmit)e.form.requestSubmit();return "enter pressed"'''
         print(out)
     elif c == 'rclick':
         x, y = point(a[1], final=True)
-        (x_click if xbg() else real_click)(x, y, int(a[2]) if len(a) > 2 else 1)
+        (x_click if xin() else real_click)(x, y, int(a[2]) if len(a) > 2 else 1)
         fin_log(' |FIN| ' + PENDING[0] if PENDING[0] else '')
         print('real click at %d,%d' % (x, y))
     elif c == 'type':
         x, y = point(a[1])
-        if xbg():
+        if xin():
             x_click(x, y)
             x_key('cmd+a')
             ext('type', text=a[2])
@@ -1063,7 +1091,9 @@ if(e.form&&e.form.requestSubmit)e.form.requestSubmit();return "enter pressed"'''
             key('cmd+a')
             paste(a[2])
         print('typed %d chars' % len(a[2]))
-    elif c == 'key' and xbg():
+    elif c == 'key' and xin():
+        if not xbg():
+            front_check()
         for combo in a[1:]:
             x_key(combo)
         print('keys sent')
@@ -1195,7 +1225,9 @@ return window.__cxlog.slice(-30).join("\\n")||"no logs yet"})()'''))
         print(settle(js('''(()=>{const e=document.elementFromPoint(%f,%f);if(!e)return "nothing there";%s
 ["pointerdown","mousedown","pointerup","mouseup"].forEach(t=>e.dispatchEvent(new MouseEvent(t,{bubbles:true,clientX:%f,clientY:%f})));e.click();
 return "clicked: "+(e.innerText||e.getAttribute("aria-label")||e.tagName).replace(/\\s+/g," ").trim().slice(0,60)})()''' % (X, Y, SIG, X, Y))))
-    elif c == 'rclickat' and xbg():
+    elif c == 'rclickat' and xin():
+        if not xbg():
+            front_check()
         x_click(float(a[1]), float(a[2]))
         print('real click done')
     elif c == 'rclickat':
