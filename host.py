@@ -8,7 +8,24 @@ import struct
 import sys
 import threading
 
-BROWSER = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].startswith('chrome-extension') else 'chrome'
+def _browser():
+    # Brave may read Chrome's host manifest too, so ask which app launched us
+    import subprocess
+    pid = os.getppid()
+    for _ in range(4):
+        out = subprocess.run(['ps', '-o', 'ppid=,comm=', '-p', str(pid)], capture_output=True, text=True).stdout.strip()
+        if not out:
+            break
+        ppid, comm = out.split(None, 1)
+        if 'Brave' in comm:
+            return 'brave'
+        if 'Chrome' in comm or 'Chromium' in comm:
+            return 'chrome'
+        pid = ppid
+    return sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].startswith('chrome-extension') else 'chrome'
+
+
+BROWSER = _browser()
 DIR = os.path.expanduser('~/.ghosttab')
 SOCK = os.path.join(DIR, BROWSER + '.sock')
 lock = threading.Lock()

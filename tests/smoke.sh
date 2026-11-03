@@ -12,7 +12,7 @@ ok "$(b c Go)" "clicked" click
 ok "$(b up - "$T/a.txt")" "attached a.txt" upload
 ok "$(b drop Drop "$T/v.mp4")" "dropped v.mp4" drop
 ok "$(b x 0 400)" "clicked file:a.txt drop:5242880" page-state
-ok "$(b ocr 2>&1)" "minimized" ocr-blocked-in-bg
+ok "$(b ocr 2>&1)" "minimized\|Canvas 4250" ocr-in-bg
 ok "$(b do 'f Name Nadir Ali ; e')" 'Name = "Nadir Ali"' batch
 ok "$(b choose Authorized Yes)" "chosen: Authorized? → Yes" choose
 ok "$(b form)" 'radio "Authorized?": .* Yes \[x\]' form

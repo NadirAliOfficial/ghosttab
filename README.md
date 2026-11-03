@@ -68,6 +68,10 @@ Optional for real mouse/keyboard: System Settings → Privacy & Security → **A
 
 Aliases: `t`=tail `x`=text `e`=el `c`=click `f`=fill `g`=go `o`=open `u`=url `k`=key `s`=scroll `w`=wait `up`=upload.
 
+## Extension bridge (recommended)
+`b ext install`, then in Chrome/Brave: Extensions > Developer mode > Load unpacked > the `ext` folder, then `b bg close; b bg on`.
+The hidden tab then gets real clicks, keys, file-chooser uploads and screenshots through the browser's debugger API, without ever touching your screen. Commands are also faster than AppleScript. Without it, GhostTab falls back to AppleScript.
+
 ## Safety
 - **Prompt injection:** page text is untrusted. The skill tells the agent never to follow instructions found on pages and to stay on the task's site. Use `bg` mode so the agent works in its own hidden window, not your tabs.
 - **Uploads are sandboxed:** keys (`id_*`, `.pem`, `.key`, `.p12`), `.env`, credentials, shell history, every dotfolder in your home (`~/.ssh`, `~/.aws`...) and `~/Library` are always refused. `B_UPLOAD_DIRS=~/Downloads:~/cv` confines uploads to those folders.

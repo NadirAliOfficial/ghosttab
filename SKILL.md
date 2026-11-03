@@ -56,11 +56,10 @@ When a dialog/modal is open, `el`, `text`, `tail`, `form` and label lookups only
 
 ## Background mode (default for multi-step jobs)
 Run `b bg on` first so the user isn't disturbed, then `b go URL` etc. It shares the user's logins.
-In bg mode real-input commands (`rclick`, `type`, `key`, `rupload`, `rclickat`) are refused — use `click`, `fill`, `clickat`, `enter`.
-`ocr`/`shot`/`tab`/`close` don't work in bg mode (the window is minimized); `go`/`back`/`reload` navigate from inside the page so the browser never activates.
-If a site truly needs real input or OCR, tell the user, `b bg off`, and do it in the front window. `b bg off` when done (parks the hidden window for reuse).
-The user can watch live: right-click the browser's Dock icon → window named "ghosttab". bg mode uses ONE hidden tab (adding tabs would pop the window up).
-If the hidden window was closed, `b` opens a new blank one by itself and says so (go/open just continue); it never falls back to the user's window. If the hidden tab ignores a `go`, it's recreated once automatically.
+**With the GhostTab extension (installed in Chrome and Brave; `b ext status`)** bg mode uses the extension's hidden tab and EVERYTHING works there: `rclick`, `type`, `key`, `rclickat` send real (isTrusted) input, `upload`/`rupload` attach any file (also on LinkedIn and pages without a file input: it answers the file chooser), `ocr`/`shot` work. Never use the front window for these any more. The browser may show a "GhostTab started debugging this browser" bar while it works; it goes away 20s after the last command.
+Without the extension: real-input commands are refused in bg (use `click`, `fill`, `clickat`, `enter`) and `ocr`/`shot` need `b bg off`.
+`tab`/`close` don't work in bg mode (one hidden tab); `go`/`back`/`reload` navigate inside the page so the browser never activates.
+`b bg off` when done. If the hidden window was closed, `b` opens a new one by itself.
 
 ## Token rules (most waste comes from the agent's own scripts, not page reads)
 - Never hand-write polling loops: use `b until 'JS condition' [sec]` or `b wait TEXT`.

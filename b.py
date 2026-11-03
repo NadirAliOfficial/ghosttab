@@ -105,7 +105,7 @@ function aq(e){const a=isBox(e)&&e.getAttribute('aria-label');if(!a)return '';co
 const on=e=>e.tagName=='INPUT'?opt(e):T(e.getAttribute('aria-label')||e.innerText);
 function ques(e){const a=aq(e);if(a)return a;const f=e.closest('fieldset');if(f){const l=f.querySelector('legend');if(l&&T(l.innerText))return T(l.innerText)}
 const g=e.closest('[role=radiogroup],[role=group]');if(g){const t=g.getAttribute('aria-label')||T((byId(g,g.getAttribute('aria-labelledby')||'')||{}).innerText);if(t)return T(t)}
-let p=e.parentElement;for(let i=0;p&&i<8;i++,p=p.parentElement){if([...p.querySelectorAll(FIELD)].some(x=>!isBoxy(x)))return '';
+let p=e.parentElement,c=e;for(let i=0;p&&i<8;i++,c=p,p=p.parentElement){if([...p.querySelectorAll(FIELD)].some(x=>!isBoxy(x))){for(let s=c.previousElementSibling;s;s=s.previousElementSibling){if(s.matches('label')||s.querySelector(FIELD))continue;const x=T(s.innerText);if(x)return x}return ''}
 const own=[...p.querySelectorAll('input[type=radio],input[type=checkbox],[role=radio],[role=checkbox]')].map(on).filter(Boolean).sort((a,b)=>b.length-a.length);
 const L=(p.innerText||'').split('\n').map(s=>T(own.reduce((s,o)=>s.split(o).join(' '),s))).filter(Boolean);if(L.length)return L[0]}return ''}
 function lab(e){if(!e.getAttribute)return '';let t=e.getAttribute('aria-label');const lb=e.getAttribute('aria-labelledby');
@@ -114,12 +114,14 @@ if(!t&&e.labels&&e.labels[0])t=e.labels[0].innerText;return T(t||e.innerText||e.
 function flab(e){if(isBoxy(e))return ques(e);let t=e.getAttribute('aria-label');const lb=e.getAttribute('aria-labelledby');
 if(!t&&lb)t=lb.split(' ').map(i=>(byId(e,i)||{}).innerText||'').join(' ');if(!t&&e.labels&&e.labels[0])t=e.labels[0].innerText;
 if(!t&&e.placeholder)t=e.placeholder;
-for(let p=e.parentElement,i=0;!T(t)&&p&&i<4;i++,p=p.parentElement)t=(p.innerText||'').split('\n').map(T).filter(x=>x&&x!==T(e.value))[0];
+for(let p=e.parentElement,i=0;!T(t)&&p&&i<4;i++,p=p.parentElement){const H=new Set([...p.querySelectorAll('h1,h2,h3')].map(h=>T(h.innerText)));t=(p.innerText||'').split('\n').map(T).filter(x=>x&&x!==T(e.value)&&!H.has(x))[0]}
 return T(t||e.name||e.id||'')}
 const vis0=e=>{const r=e.getBoundingClientRect();return r.width&&r.height&&getComputedStyle(e).visibility!='hidden'&&e.type!='hidden'};
 const vis=e=>{if(vis0(e))return true;if(!isBox(e)||e.closest('[hidden],[aria-hidden=true]'))return false;if(e.checkVisibility)return e.checkVisibility();if(e.labels&&e.labels[0]&&vis0(e.labels[0]))return true;for(let p=e.parentElement,i=0;p&&i<4;i++,p=p.parentElement){if(vis0(p))return true}return false};
 function itext(r){const sl=[...r.querySelectorAll('select')].map(s=>{const sp=document.createElement('span');sp.textContent='['+(s.selectedIndex>=0?T(s.options[s.selectedIndex].text):'')+' ▾]';s.__d=s.style.display;s.style.display='none';s.after(sp);return [s,sp]});
 try{return r.innerText}finally{sl.forEach(([s,sp])=>{s.style.display=s.__d;sp.remove()})}}
+const STATUS=/^(application (was )?(submitted|sent)|your application was sent.{0,40}|applied|applied (on .{1,20}|\d+ \w+ ago)|you applied.{0,40})$/i;
+const stat=r=>[...(r||document).querySelectorAll('h1,h2,h3,h4,h5,span,p,div,strong,li')].some(x=>x.childElementCount<=3&&T(x.innerText).length<80&&STATUS.test(T(x.innerText))&&!x.closest('label,legend,fieldset,[role=radiogroup],[role=group],form')&&vis(x));
 const dsig=R=>R?T((R.querySelector('h1,h2,h3')||R).innerText).slice(0,80)+'|'+R.querySelectorAll(FIELD).length:'';
 function scope(){if(window.__gtAll)return null;const d=[...document.querySelectorAll('[role=dialog],[aria-modal=true],dialog[open]')].filter(e=>{const r=e.getBoundingClientRect();return r.width>80&&r.height>80&&getComputedStyle(e).visibility!='hidden'});return d.length?d[d.length-1]:null}
 function ctlOf(e){if(e.matches(FIELD))return e;if(e.tagName=='LABEL'){if(e.control)return e.control;const x=e.querySelector(FIELD);if(x)return x}
@@ -176,7 +178,9 @@ return h+(out.map(x=>x.s?x.line+': '+x.s.join(' | '):x.line).join('\n')||'no fie
 FORMMAP = r'''const it=scan();const res={};const N=s=>s.toLowerCase().replace(/\s*\*$/,'').trim();
 K.forEach(k=>{const lo=N(k);const c=it.map((f,i)=>({f,i})).filter(x=>x.f.k!='button');const L=x=>N(x.f.q||x.f.l);
 let m=c.filter(x=>L(x)==lo);if(!m.length)m=c.filter(x=>L(x).startsWith(lo));if(!m.length)m=c.filter(x=>L(x).includes(lo));
-if(!m.length){res[k]={k:'missing'};return}const f=m[0].f;
+if(!m.length){res[k]={k:'missing'};return}
+const gk=x=>x.f.q||('#'+x.i);const U=[...new Map(m.map(x=>[gk(x),x])).values()];
+if(U.length>1){const ps=x=>L(x).indexOf(lo);U.sort((a,b)=>ps(a)-ps(b));if(ps(U[0])<ps(U[1]))m=m.filter(x=>gk(x)===gk(U[0]))}const f=m[0].f;
 if(m.every(x=>(x.f.k=='radio'||x.f.k=='checkbox')&&x.f.q==f.q))res[k]=m.length==1&&f.k=='checkbox'?{k:'check',i:m[0].i}:{k:'choose',q:f.q};
 else if(m.length==1)res[k]={k:f.k,i:m[0].i};else res[k]={k:'ambiguous',l:m.slice(0,5).map(x=>x.f.q||x.f.l).join(' | ')}});return JSON.stringify(res)'''
 
@@ -451,7 +455,7 @@ def send_file(path):
     js('window.__up=[];0')
     with open(path, 'rb') as fh:
         while True:
-            chunk = fh.read(6 * 1024 * 1024)
+            chunk = fh.read(700 * 1024 if xbg() else 6 * 1024 * 1024)  # native messaging caps host->browser at 1MB
             if not chunk:
                 break
             b64 = __import__('base64').b64encode(chunk).decode()
@@ -494,7 +498,7 @@ FORM_CMDS = ('fill', 'type', 'select', 'check', 'pick', 'upload')
 # Submit/Send/Pay-like buttons: no fuzzy matches, no stale or already-submitted state. Sets FIN (url | title | label) when final.
 FINAL = r'''const L=lab(e),fin=/^(submit|send|pay|post|place order|purchase|apply( now)?$|confirm and pay)|submit application/i.test(L);let FIN='';
 if(fin){if(!/^\d+$/.test(Q)&&!FIN_OK&&L.toLowerCase().replace(/\s*\*$/,'')!==Q.toLowerCase())return 'REFUSED: "'+Q+'" fuzzily matched the final button "'+L.slice(0,50)+'". Use its exact text, its number from b el, or add --final';
-const R=scope();if(!FORCE&&/apply|submit/i.test(L)&&/application (submitted|was sent|sent)|you applied|\bapplied\s+\d/i.test((R||document.querySelector('main')||document.body).innerText))return 'REFUSED: the page already says it was submitted/applied. Check b t 400 (--force to override)';
+const R=scope();if(!FORCE&&/apply|submit/i.test(L)&&stat(R||document.querySelector('main')||document.body))return 'REFUSED: the page already says it was submitted/applied. Check b t 400 (--force to override)';
 if(!FORCE&&R&&window.__gtForm!==undefined&&window.__gtForm!==dsig(R))return 'REFUSED: the dialog changed since your last b form / b el / b li review. Look again, then click (--force to override)';
 FIN=location.href+' | '+document.title+' | '+L.slice(0,60)}'''
 SUBMITS = os.path.join(HERE, 'submits.log')
@@ -732,7 +736,7 @@ if(f.k=='select')return !/^\d+ options$/.test(f.o)&&!/@/.test(f.v);if(f.k=='text
 const v=String(f.v);return v===''||/\?/.test(f.l)||/^\d{1,2}$/.test(v)});
 const ct=fl.some(f=>f.k=='select'&&(/^\d+ options$/.test(f.o)||/@/.test(f.v)));const kind=ct?'contact':qf.length?'questions':fl.some(f=>f.k=='file'||fn.test(f.o||''))||[...R?R.querySelectorAll('*'):[]].some(x=>!x.children.length&&fn.test(x.textContent||''))?'resume':fl.length?'contact':'profile';
 const cl=!fl.length&&[...R?R.querySelectorAll('a,button'):[]].find(b=>vis(b)&&/continue|weiter|dalej|continuer|continuar/i.test(T(b.innerText)));
-if(cl)cl.setAttribute('data-gtcont','1');return JSON.stringify({dlg:!!R,h,pr,req,kind,cont:!!cl,next:nx?T(nx.innerText):'',submit:!!sub,done:/application (was )?sent|application submitted|you applied/i.test(t),
+if(cl)cl.setAttribute('data-gtcont','1');return JSON.stringify({dlg:!!R,h,pr,req,kind,cont:!!cl,next:nx?T(nx.innerText):'',submit:!!sub,done:R?stat(R):false,
 review:!!sub||/^(100|(\d+)\/\2)$/.test(pr)||/review your application/i.test(t),resume:/upload resume|^resume$/im.test(t)||[...R?R.querySelectorAll('*'):[]].some(x=>!x.children.length&&/\.(pdf|docx?)\b/i.test(x.textContent||'')),sig:dsig(R),err})"""
 
 LIREVIEW = r"""const R=scope();if(!R)return 'no Easy Apply dialog open';window.__gtForm=dsig(R);const fn=/\.(pdf|docx?)\b/i;
@@ -786,7 +790,7 @@ def li_apply(jid, cv):
     main(['go', 'https://www.linkedin.com/jobs/view/%s/' % jid])
     js_until('document.querySelector("h1")', 15)
     st = page(r"""const m=document.querySelector('main')||document.body;
-if(/application (was )?sent|application submitted|\bapplied\s+\d+\s*(second|minute|hour|day|week|month)/i.test(T(m.innerText).slice(0,3000)))return 'ALREADY';
+let top=document.querySelector('h1');for(let i=0;top&&i<5;i++)top=top.parentElement;if(stat(top||m))return 'ALREADY';
 const b=deep(m,0,0,[]).map(x=>x[0]).filter(e=>e.matches&&e.matches('button,a')&&vis(e)&&/^(easy apply|continue)\b/i.test(lab(e)));
 if(!b.length)return 'NOBUTTON';b[0].click();return lab(b[0])""")
     if st in ('ALREADY', 'NOBUTTON'):
@@ -797,8 +801,12 @@ if(!b.length)return 'NOBUTTON';b[0].click();return lab(b[0])""")
     js_until('(()=>{%s;return scope()})()' % DEEP.replace('BACKING', '2'), 10)
     picked, last, retried = False, '', False
     for _ in range(10):
-        time.sleep(0.8)
-        s = json.loads(page(SCAN + ';' + LISTEP))
+        end = time.time() + 5
+        while True:
+            time.sleep(0.5)
+            s = json.loads(page(SCAN + ';' + LISTEP))
+            if s['next'] or s['pr'] or s['review'] or s['cont'] or s['done'] or time.time() > end:
+                break
         if not s['dlg']:
             print('Easy Apply dialog did not open (b t 600)')
             return
@@ -893,6 +901,9 @@ def main(a=None):
         return
     c = a[0] = ALIAS.get(a[0], a[0])
     CMD[0] = c
+    global TIMEOUT
+    if c in ('click', 'rclick') and 'B_TIMEOUT' not in os.environ:
+        TIMEOUT = 90
     FLAGS['FIN_OK'] = '--final' in a
     FLAGS['FORCE'] = '--force' in a
     a = [x for x in a if x not in ('--final', '--force')]
@@ -996,7 +1007,7 @@ let t;try{t=itext(r)}finally{hid.forEach(e=>e.style.display=e.__d)}return (R?'[d
         body = {
             'click': FINAL + ';' + SIG + 'e.scrollIntoView({block:"center"});e.click();return "clicked: "+lab(e).slice(0,60)+(FIN?" |FIN| "+FIN:"")',
             'hover': 'e.scrollIntoView({block:"center"});["pointerover","mouseover","mouseenter","pointermove","mousemove"].forEach(t=>e.dispatchEvent(new MouseEvent(t,{bubbles:true})));return "hovered: "+lab(e).slice(0,60)',
-            'fill': '''const v=%s;if(!e.matches(FIELD)&&!e.isContentEditable){const c=ctlOf(e);if(c)e=c}if(e.matches('input[aria-autocomplete=list],[class*=select__input] input,input[class*=select__input]'))return "USEPICK";e.focus();
+            'fill': '''const v=%s;if(!e.matches(FIELD)&&!e.isContentEditable){const c=ctlOf(e);if(c)e=c}if(!(e.matches('input,textarea')&&!isBox(e)&&e.type!='file')&&!e.isContentEditable)return "not a text field: "+e.tagName.toLowerCase()+" "+lab(e).slice(0,50)+" (use b form for field numbers)";if(e.readOnly||e.disabled)return "field is read-only/disabled: "+flab(e).slice(0,50);if(e.matches('input[aria-autocomplete=list],[class*=select__input] input,input[class*=select__input]'))return "USEPICK";e.focus();
 if(e.isContentEditable){document.execCommand("selectAll");const L=v.split("\\n");L.forEach((l,i)=>{if(l)document.execCommand("insertText",false,l);if(i<L.length-1)document.execCommand("insertParagraph")})}
 else{const p=e.tagName=="TEXTAREA"?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;Object.getOwnPropertyDescriptor(p,"value").set.call(e,v);
 e.dispatchEvent(new Event("input",{bubbles:true}));e.dispatchEvent(new Event("change",{bubbles:true}))}
@@ -1004,8 +1015,11 @@ return "filled "+e.tagName.toLowerCase()+" \\""+flab(e).slice(0,40)+"\\" ("+v.le
             'select': '''const v=%s;if(e.tagName=="LABEL"&&e.control)e=e.control;if(!e.options)return "not a <select>; for comboboxes use pick, else click to open then click the option";
 const o=[...e.options].find(o=>o.text.trim().toLowerCase()==v.toLowerCase())||[...e.options].find(o=>o.text.trim().toLowerCase().includes(v.toLowerCase()));
 if(!o)return "no option; have: "+[...e.options].map(o=>o.text.trim()).join(", ");e.value=o.value;e.dispatchEvent(new Event("input",{bubbles:true}));e.dispatchEvent(new Event("change",{bubbles:true}));return "selected "+o.text.trim()+" in \\""+flab(e).slice(0,40)+"\\""''' % v,
-            'check': '''const v=%s;if(e.tagName=="LABEL"&&e.control)e=e.control;const want=v?/^(on|true|yes|1|x)$/i.test(v):null;
-if(want===null||e.checked!==want)e.click();return "checked="+e.checked+" ("+lab(e).slice(0,40)+")"''' % v,
+            'check': '''const v=%s;if(!isBoxy(e)){const l=e.closest('label');e=(l&&l.control)||(e.tagName=="LABEL"&&e.control)||ctlOf(e)||e.closest('[role=checkbox]')||e}
+if(!isBoxy(e))return "not a checkbox: "+lab(e).slice(0,50);const st=()=>e.tagName=="INPUT"?e.checked:e.getAttribute("aria-checked")=="true";
+const want=v?/^(on|true|yes|1|x)$/i.test(v):!st();if(st()!==want)e.click();
+if(st()!==want&&e.tagName=="INPUT"){Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"checked").set.call(e,want);["click","input","change"].forEach(t=>e.dispatchEvent(new Event(t,{bubbles:true})))}
+return (st()===want?"checked=":"NOT changed, checked=")+st()+" ("+(ques(e)||lab(e)).slice(0,50)+")"''' % v,
             'enter': '''e.focus();["keydown","keypress","keyup"].forEach(t=>e.dispatchEvent(new KeyboardEvent(t,{key:"Enter",code:"Enter",keyCode:13,which:13,bubbles:true})));
 if(e.form&&e.form.requestSubmit)e.form.requestSubmit();return "enter pressed"''',
         }[c]
