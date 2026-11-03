@@ -952,6 +952,17 @@ L.forEach((l,i)=>{if(l)document.execCommand('insertText',false,l);if(i<L.length-
 YT_THREAD = r"""const t=[...document.querySelectorAll('ytd-comment-thread-renderer')];const m=t.find(x=>[...x.querySelectorAll('a[href*="lc="]')].some(a=>a.href.includes('lc='+C)))||t.find(x=>/highlighted/i.test(x.innerText));"""
 
 
+def tclick(find, **v):
+    """find = JS returning the element (or a string error); real (trusted) click via the extension, else JS click."""
+    out = page('const e=(()=>{%s})();if(!e||typeof e=="string")return "ERR "+(e||"not found");e.scrollIntoView({block:"center"});'
+               'if(!XIN){e.click();return "JS"}const r=e.getBoundingClientRect();return JSON.stringify([r.x+r.width/2,r.y+r.height/2])' % find, XIN=xin(), **v)
+    if out.startswith('['):
+        pump()
+        x_click(*json.loads(out))
+        return 'ok'
+    return 'ok' if out == 'JS' else out
+
+
 def yt(a):
     """b yt pin VIDEO_ID COMMENT_ID : open the video with the comment highlighted and pin it."""
     if len(a) < 4 or a[1] != 'pin':
@@ -970,25 +981,35 @@ def yt(a):
     if page(YT_THREAD + 'return /pinned by/i.test(m.innerText)?1:0', C=cid) == '1':
         print('already pinned')
         return
-    print(page(YT_THREAD + r"""const b=m.querySelector('#action-menu button,button[aria-label="Action menu"]');if(!b)return 'no action menu (only the channel owner can pin)';b.click();return 'menu opened'""", C=cid))
-    pump()
-    time.sleep(0.8)
-    pump()
-    r = page(r"""const i=[...document.querySelectorAll('ytd-menu-service-item-renderer,tp-yt-paper-item,[role=menuitem]')].find(x=>vis(x)&&/^pin$/i.test(T(x.innerText)));if(!i)return 'no Pin item in the menu';i.click();return 'ok'""")
+    r = tclick(YT_THREAD + "return m&&(m.querySelector('#action-menu button,button[aria-label=\"Action menu\"]')||'no action menu (only the channel owner can pin)')", C=cid)
     if r != 'ok':
         sys.exit(r)
-    for _ in range(10):
+    item = None
+    for _ in range(12):
+        pump()
+        time.sleep(0.4)
+        r = tclick("""const i=[...document.querySelectorAll('tp-yt-paper-item,[role=menuitem],ytd-menu-service-item-renderer')].filter(x=>vis(x)&&/^pin$/i.test(T(x.innerText)));return i.sort((a,b)=>a.contains(b)?1:b.contains(a)?-1:0)[0]""")
+        if r == 'ok':
+            item = True
+            break
+    if not item:
+        sys.exit('menu opened but no "Pin" item (b t 400)')
+    for _ in range(16):
         pump()
         time.sleep(0.5)
-        if page(r"""const b=[...document.querySelectorAll('yt-confirm-dialog-renderer #confirm-button button,yt-confirm-dialog-renderer #confirm-button,tp-yt-paper-dialog button')].find(x=>vis(x)&&/^pin$/i.test(T(x.innerText)));if(b){b.click();return 1}return 0""") == '1':
+        r = tclick("""const d=[...document.querySelectorAll('yt-confirm-dialog-renderer,tp-yt-paper-dialog,[role=dialog]')].filter(vis).pop();if(!d)return '';
+return [...d.querySelectorAll('button,[role=button]')].filter(x=>vis(x)&&/^pin$/i.test(T(x.innerText||x.getAttribute('aria-label')))).pop()||''""")
+        if r == 'ok':
             break
-    for _ in range(10):
+    else:
+        sys.exit('clicked Pin in the menu but no confirm dialog showed up')
+    for _ in range(20):
         pump()
         time.sleep(0.6)
         if js('/pinned by/i.test(document.querySelector("ytd-comments")?.innerText||"")') == 'true':
             print('pinned %s on %s' % (cid, vid))
             return
-    print('clicked Pin; could not confirm "Pinned by" yet (b t 600)')
+    print('confirmed Pin; "Pinned by" not visible yet (reload the video to check)')
 
 
 def ext_cmd(m):
