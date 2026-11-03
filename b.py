@@ -705,6 +705,10 @@ USAGE = '''commands:
  li jobs QUERY [PLACE|geo=ID] [days=30] [all] [any]   Easy Apply jobs (any = all jobs; all = show Applied too)
  li job ID | li apply ID [CVNAME] | li review      job summary / start Easy Apply to the questions / compact review
  close mine          close the tabs b opened in your window (front mode)
+ save N|TEXT|URL OUT download an image/link/canvas (with your login) to a file
+ gpt image @prompt.txt OUT.png   ChatGPT: send prompt, wait, save the generated image full size
+ yt pin VIDEO_ID COMMENT_ID      pin a comment on your video
+ fb "note" | stats   report a GhostTab problem/idea | per-command speed and errors
  safety: Submit/Send/Pay/Apply clicks need exact text or a number (--final to allow fuzzy); refused if the page
          already says submitted or the dialog changed since b form/el (--force); every final click goes to submits.log
          rclick/type/key/rupload refuse if you switched tab/site since b's last command (b url to accept, or --force)
@@ -862,6 +866,131 @@ if(!b.length)return 'NOBUTTON';b[0].click();return lab(b[0])""")
     print('gave up after 10 pages (b form)')
 
 
+SAVE_START = r"""const u=U;window.__sv=null;fetch(u,{credentials:'include'}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.blob()})
+.then(b=>new Promise(res=>{const f=new FileReader();f.onload=()=>res(f.result);f.readAsDataURL(b)})).then(d=>window.__sv=d).catch(e=>{window.__sv='ERR '+e.message});return 1"""
+
+
+def save(src, out):
+    """Download a URL or the image/link/canvas at a target with the page's cookies into a local file."""
+    import base64
+    if '://' not in src:
+        src = page(r"""let e=cx(Q,false);if(!e)return 'ERR not found: '+Q;if(e.tagName!='IMG'&&e.tagName!='CANVAS'&&e.tagName!='A'){const i=e.querySelector('img,canvas');if(i)e=i}
+if(e.tagName=='CANVAS')return e.toDataURL('image/png');return e.currentSrc||e.src||e.href||'ERR no image or link at '+Q""", Q=src)
+        if src.startswith('ERR'):
+            sys.exit(src[4:])
+    if not src.startswith('data:'):
+        page(SAVE_START, U=src)
+        end = time.time() + 60
+        while time.time() < end and js('window.__sv?1:0') != '1':
+            time.sleep(0.3)
+        n = int(js('window.__sv?window.__sv.length:0'))
+        head = js('window.__sv?window.__sv.slice(0,200):""')
+        if (not n or head.startswith('ERR')) and xin():
+            # cross-origin without CORS: take it from the browser's own cache
+            try:
+                data = b''.join(__import__('base64').b64decode(x) for x in json.loads(ext('resource', url=src, timeout=60)))
+                out = os.path.abspath(os.path.expanduser(out))
+                open(out, 'wb').write(data)
+                return 'saved %s (%d KB)' % (out, len(data) // 1024)
+            except (ExtDown, RuntimeError):
+                pass
+        if not n or head.startswith('ERR'):
+            try:
+                data = subprocess.run(['curl', '-sfL', '--max-time', '30', '-A', 'Mozilla/5.0', src], capture_output=True, check=True).stdout
+                out = os.path.abspath(os.path.expanduser(out))
+                open(out, 'wb').write(data)
+                return 'saved %s (%d KB, public download)' % (out, len(data) // 1024)
+            except Exception:
+                pass
+            # last resort: draw the loaded image on a canvas
+            src = page(r"""const i=[...document.images].find(x=>(x.currentSrc||x.src)==U);if(!i)return 'ERR '+H;try{const c=document.createElement('canvas');c.width=i.naturalWidth;c.height=i.naturalHeight;c.getContext('2d').drawImage(i,0,0);return c.toDataURL('image/png')}catch(e){return 'ERR '+H+' / '+e.message}""", U=src, H=head or 'timeout')
+            if src.startswith('ERR'):
+                sys.exit('could not download: ' + src[4:])
+        else:
+            src = ''.join(js('window.__sv.slice(%d,%d)' % (i, i + 600000)) for i in range(0, n, 600000))
+            js('window.__sv=null;1')
+    data = base64.b64decode(src.split(',', 1)[1])
+    out = os.path.abspath(os.path.expanduser(out))
+    open(out, 'wb').write(data)
+    return 'saved %s (%d KB)' % (out, len(data) // 1024)
+
+
+GPT_IMGS = 'JSON.stringify([...document.querySelectorAll("main img")].filter(i=>i.naturalWidth>=256&&/generated|image/i.test(i.alt||"image")).map(i=>i.currentSrc||i.src))'
+
+
+def gpt(a):
+    """b gpt image @prompt.txt|TEXT OUT.png : new ChatGPT chat, send the prompt, wait for the image, save it full size."""
+    if len(a) < 4 or a[1] != 'image':
+        sys.exit('usage: b gpt image @prompt.txt|"prompt" OUT.png')
+    prompt = open(os.path.expanduser(a[2][1:])).read().strip() if a[2].startswith('@') else a[2]
+    main(['go', 'https://chatgpt.com/'])
+    if not js_until('document.querySelector("#prompt-textarea")', 25):
+        sys.exit('ChatGPT composer not found (logged out? b t 400)')
+    before = set(json.loads(js(GPT_IMGS)))
+    print(page(r"""const e=document.querySelector('#prompt-textarea');e.focus();document.execCommand('selectAll');const L=V.split('\n');
+L.forEach((l,i)=>{if(l)document.execCommand('insertText',false,l);if(i<L.length-1)document.execCommand('insertParagraph')});return 'prompt: '+V.length+' chars'""", V=prompt))
+    if not js_until('(b=>b&&!b.disabled)(document.querySelector("[data-testid=send-button],#composer-submit-button"))', 15):
+        sys.exit('send button never enabled')
+    js('document.querySelector("[data-testid=send-button],#composer-submit-button").click();1')
+    t0 = time.time()
+    js_until('document.querySelector("[data-testid=stop-button]")', 20)
+    new = []
+    while time.time() - t0 < 300:
+        time.sleep(3)
+        pump()
+        busy = js('!!document.querySelector("[data-testid=stop-button]")') == 'true'
+        new = [u for u in json.loads(js(GPT_IMGS)) if u not in before]
+        if new and not busy:
+            break
+    if not new:
+        sys.exit('no image after %ds; last reply: %s' % (time.time() - t0, js('(()=>{const m=[...document.querySelectorAll("[data-message-author-role=assistant]")].pop();return m?m.innerText.slice(0,300):"none"})()')))
+    time.sleep(2)
+    new = [u for u in json.loads(js(GPT_IMGS)) if u not in before] or new
+    print('%s after %ds' % (save(new[-1], a[3]), time.time() - t0))
+
+
+YT_THREAD = r"""const t=[...document.querySelectorAll('ytd-comment-thread-renderer')];const m=t.find(x=>[...x.querySelectorAll('a[href*="lc="]')].some(a=>a.href.includes('lc='+C)))||t.find(x=>/highlighted/i.test(x.innerText));"""
+
+
+def yt(a):
+    """b yt pin VIDEO_ID COMMENT_ID : open the video with the comment highlighted and pin it."""
+    if len(a) < 4 or a[1] != 'pin':
+        sys.exit('usage: b yt pin VIDEO_ID COMMENT_ID')
+    vid, cid = a[2], a[3]
+    main(['go', 'https://www.youtube.com/watch?v=%s&lc=%s' % (vid, cid)])
+    end = time.time() + 40
+    while time.time() < end:
+        js('(()=>{const c=document.querySelector("ytd-comments#comments,#comments");if(c)c.scrollIntoView();return 1})()')
+        pump()
+        if page(YT_THREAD + 'return m?1:0', C=cid) == '1':
+            break
+        time.sleep(1)
+    else:
+        sys.exit('comment %s did not load (comments off, wrong id, or not your channel)' % cid)
+    if page(YT_THREAD + 'return /pinned by/i.test(m.innerText)?1:0', C=cid) == '1':
+        print('already pinned')
+        return
+    print(page(YT_THREAD + r"""const b=m.querySelector('#action-menu button,button[aria-label="Action menu"]');if(!b)return 'no action menu (only the channel owner can pin)';b.click();return 'menu opened'""", C=cid))
+    pump()
+    time.sleep(0.8)
+    pump()
+    r = page(r"""const i=[...document.querySelectorAll('ytd-menu-service-item-renderer,tp-yt-paper-item,[role=menuitem]')].find(x=>vis(x)&&/^pin$/i.test(T(x.innerText)));if(!i)return 'no Pin item in the menu';i.click();return 'ok'""")
+    if r != 'ok':
+        sys.exit(r)
+    for _ in range(10):
+        pump()
+        time.sleep(0.5)
+        if page(r"""const b=[...document.querySelectorAll('yt-confirm-dialog-renderer #confirm-button button,yt-confirm-dialog-renderer #confirm-button,tp-yt-paper-dialog button')].find(x=>vis(x)&&/^pin$/i.test(T(x.innerText)));if(b){b.click();return 1}return 0""") == '1':
+            break
+    for _ in range(10):
+        pump()
+        time.sleep(0.6)
+        if js('/pinned by/i.test(document.querySelector("ytd-comments")?.innerText||"")') == 'true':
+            print('pinned %s on %s' % (cid, vid))
+            return
+    print('clicked Pin; could not confirm "Pinned by" yet (b t 600)')
+
+
 def ext_cmd(m):
     if m == 'install':
         xid = open(os.path.join(HERE, 'ext', 'ID')).read().strip()
@@ -889,9 +1018,19 @@ def ext_cmd(m):
         print('extension not connected: %s' % (e or 'no socket at ' + SOCK))
 
 
+def pump():
+    """Force one rendered frame in the hidden tab (screenshot) so lazy-loaded content appears."""
+    if xbg():
+        try:
+            ext('shot', timeout=10)
+        except (ExtDown, RuntimeError):
+            pass
+
+
 def js_until(cond, sec):
     end = time.time() + sec
     while time.time() < end:
+        pump()
         if js('!!(%s)' % cond, soft=True) == 'true':
             return True
         time.sleep(0.5)
@@ -924,7 +1063,11 @@ def main(a=None):
         TIMEOUT = 90
     FLAGS['FIN_OK'] = '--final' in a
     FLAGS['FORCE'] = '--force' in a
-    a = [x for x in a if x not in ('--final', '--force')]
+    front = '--front' in a or os.environ.get('B_FRONT')
+    a = [x for x in a if x not in ('--final', '--force', '--front')]
+    if not bgwin() and not front and c in ACTS - {'bg', 'js'} | {'li', 'gpt', 'yt', 'save'} and a[1:2] != ['mine']:
+        sys.exit('bg mode is off, so this would act on the tab the user is looking at. Run b bg on first '
+                 '(or add --front only if the user asked you to use their visible tab)')
     run(c, a)
     if c not in ('log', 'bg', 'tabs', 'li', 'close') and not bgwin():
         front_mark()
@@ -1140,6 +1283,7 @@ if(e.form&&e.form.requestSubmit)e.form.requestSubmit();return "enter pressed"'''
             code = 'scrollBy(0,%s)' % w
         if code:
             # also scroll the biggest scrollable panel (chat lists etc.)
+            pump()
             print(js('''(()=>{%s;const p=[...document.querySelectorAll("*")].filter(e=>e.scrollHeight>e.clientHeight+50&&/(auto|scroll)/.test(getComputedStyle(e).overflowY)).sort((a,b)=>b.clientHeight-a.clientHeight)[0];
 if(p){const d={down:p.clientHeight*.8,up:-p.clientHeight*.8,top:-1e9,bottom:1e9}[%s];p.scrollBy(0,d!==undefined?d:%s)}return "scrolled"})()''' % (
                 code, json.dumps(w), w if w.lstrip('-').isdigit() else 0)))
@@ -1221,6 +1365,12 @@ return window.__cxlog.slice(-30).join("\\n")||"no logs yet"})()'''))
         print(user_js(a[1]))
     elif c == 'li':
         li(a)
+    elif c == 'save':
+        print(save(a[1], a[2]))
+    elif c == 'gpt':
+        gpt(a)
+    elif c == 'yt':
+        yt(a)
     elif c == 'ext':
         ext_cmd(a[1] if len(a) > 1 else 'status')
     elif c == 'shot':

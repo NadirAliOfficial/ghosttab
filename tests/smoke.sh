@@ -26,5 +26,4 @@ ok "$(b js '$dlg.querySelectorAll("input")')" "2 elements" js-dlg
 ok "$(b c Submit)" "REFUSED" final-fuzzy
 b js 'document.querySelector("h3").textContent="Other";1' >/dev/null
 ok "$(b c 'Submit application')" "dialog changed" final-stale
-b bg off >/dev/null
 rm -rf "$T"; exit ${FAIL:-0}

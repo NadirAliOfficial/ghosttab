@@ -41,6 +41,9 @@ Drive the user's real, logged-in Chrome from Bash. Everything is text. `BROWSER=
 | `b li jobs QUERY [PLACE\|geo=ID] [days=30] [all] [any]` | LinkedIn Easy Apply jobs in a place (EU, PL, NL, DE, IE, CY, UAE, KSA, UK, US... mapped to geoId; unknown names are refused, pass geo=ID). Hides jobs already Applied (`all` shows them), `any` = not only Easy Apply |
 | `b li job ID` | one job summary in ~300 tokens |
 | `b li apply ID [CVNAME]` | opens Easy Apply (or Continue on a draft), picks the saved CV, presses Next through contact/resume pages, stops at questions (prints only the fields, unanswered ones, errors) or review. Never submits. Drafts resumed via Continue lose an uploaded cover letter: re-upload |
+| `b save N\|TEXT\|.sel\|URL OUT` | download an image, link or canvas with the user's login (cross-site too) |
+| `b gpt image @prompt.txt OUT.png` | ChatGPT: new chat, send, wait for the image, save it full size (one call) |
+| `b yt pin VIDEO_ID COMMENT_ID` | pin a comment on the user's video (hidden tab; lazy comments load) |
 | `b li review` | compact review page: progress, CV name, answers |
 | `b close mine` | close the tabs `b open` made in your window (`open` also switches to an existing tab with the same URL) |
 | `b ocr [FILTER]` | read the window's pixels as text ON-DEVICE (Apple Vision, ~0.7s, zero image tokens) → `x,y text` in page coords. For canvas, images, PDFs, charts, anything `text` misses |
@@ -54,7 +57,9 @@ Custom dropdowns (div-based): react-select → `pick`; others: `click` to open, 
 
 When a dialog/modal is open, `el`, `text`, `tail`, `form` and label lookups only see the dialog (add `all` for the whole page).
 
-## Background mode (default for multi-step jobs)
+## Background mode (ALWAYS)
+Without `b bg on`, actions are refused (they would hit the tab the user is looking at). Use `--front` only if the user asked for their visible tab.
+
 Run `b bg on` first so the user isn't disturbed, then `b go URL` etc. It shares the user's logins.
 **With the GhostTab extension (installed in Chrome and Brave; `b ext status`)** bg mode uses the extension's hidden tab and EVERYTHING works there: `rclick`, `type`, `key`, `rclickat` send real (isTrusted) input, `upload`/`rupload` attach any file (also on LinkedIn and pages without a file input: it answers the file chooser), `ocr`/`shot` work. Never use the front window for these any more. The browser may show a "GhostTab started debugging this browser" bar while it works; it goes away 20s after the last command.
 Without the extension: real-input commands are refused in bg (use `click`, `fill`, `clickat`, `enter`) and `ocr`/`shot` need `b bg off`.

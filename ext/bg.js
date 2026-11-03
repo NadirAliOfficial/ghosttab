@@ -117,6 +117,20 @@ async function handle(m) {
       await cdp(tabId, 'Page.setInterceptFileChooserDialog', {enabled: true});
       return 'ok';
     case 'armed': return D[tabId].files ? 'waiting' : 'used';
+    case 'resource': {
+      // the browser's own network stack with the user's cookies, no CORS; returns base64 chunks
+      const ft = await cdp(tabId, 'Page.getFrameTree');
+      const r = await cdp(tabId, 'Network.loadNetworkResource', {frameId: ft.frameTree.frame.id, url: m.url, options: {disableCache: false, includeCredentials: true}});
+      if (!r.resource.success) throw new Error('HTTP ' + (r.resource.httpStatusCode || r.resource.netErrorName));
+      const parts = [];
+      for (;;) {
+        const c = await cdp(tabId, 'IO.read', {handle: r.resource.stream, size: 1 << 20});
+        parts.push(c.base64Encoded ? c.data : btoa(unescape(encodeURIComponent(c.data))));
+        if (c.eof) break;
+      }
+      cdp(tabId, 'IO.close', {handle: r.resource.stream}).catch(() => {});
+      return JSON.stringify(parts);
+    }
     case 'shot': return (await cdp(tabId, 'Page.captureScreenshot', {format: 'png'})).data;
   }
   throw new Error('unknown op ' + m.op);
