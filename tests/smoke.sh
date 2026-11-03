@@ -26,4 +26,6 @@ ok "$(b js '$dlg.querySelectorAll("input")')" "2 elements" js-dlg
 ok "$(b c Submit)" "REFUSED" final-fuzzy
 b js 'document.querySelector("h3").textContent="Other";1' >/dev/null
 ok "$(b c 'Submit application')" "dialog changed" final-stale
+b go 'data:text/html,<dialog open style="width:300px;height:150px"><h2 style="position:absolute;width:1px;height:1px;overflow:hidden">0 notifications</h2>You reached today limit<button>Got it</button></dialog>' >/dev/null
+ok "$(b el)" "Got it" dlg-srheading
 rm -rf "$T"; exit ${FAIL:-0}
