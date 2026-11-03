@@ -91,7 +91,7 @@ function scope(){if(window.__gtAll)return null;const d=[...document.querySelecto
 function ctlOf(e){if(e.matches(FIELD))return e;if(e.tagName=='LABEL'){if(e.control)return e.control;const x=e.querySelector(FIELD);if(x)return x}
 for(let p=e,i=0;p&&i<4;i++,p=p.parentElement){const x=[...p.querySelectorAll(FIELD)].filter(x=>vis(x)||x.type=='file');if(x.length==1)return x[0];if(x.length>1)break}return null}
 function cx(q,form){window.__cxerr='';if(/^\d+$/.test(q))return (window.__cx||[])[+q];const root=scope()||document;
-if(/^[#\[]/.test(q)){try{const e=root.querySelector(q)||document.querySelector(q);if(e)return e}catch(_){}}
+if(/^[#.\[]/.test(q)){try{const e=root.querySelector(q)||document.querySelector(q);if(e)return e}catch(_){}}
 const lo=q.toLowerCase(),L=e=>lab(e).toLowerCase().replace(/\s*\*$/,'');const D=deep(root,0,0,[]).map(x=>x[0]).filter(e=>e.matches);
 const all=D.filter(e=>(e.matches(SEL)||e.matches('label,span,div,li,p,h1,h2,h3,h4,td,legend'))&&vis(e));
 if(form){const F=e=>flab(e).toLowerCase().replace(/\s*\*$/,'');const fs=D.filter(e=>e.matches(FIELD)&&!isBox(e)&&(vis(e)||e.type=='file'));
