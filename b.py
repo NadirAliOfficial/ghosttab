@@ -117,7 +117,7 @@ if(!t&&e.placeholder)t=e.placeholder;
 for(let p=e.parentElement,i=0;!T(t)&&p&&i<4;i++,p=p.parentElement)t=(p.innerText||'').split('\n').map(T).filter(x=>x&&x!==T(e.value))[0];
 return T(t||e.name||e.id||'')}
 const vis0=e=>{const r=e.getBoundingClientRect();return r.width&&r.height&&getComputedStyle(e).visibility!='hidden'&&e.type!='hidden'};
-const vis=e=>{if(vis0(e))return true;if(!isBox(e)||e.closest('[hidden],[aria-hidden=true]'))return false;if(e.labels&&e.labels[0]&&vis0(e.labels[0]))return true;for(let p=e.parentElement,i=0;p&&i<4;i++,p=p.parentElement){if(vis0(p))return true}return false};
+const vis=e=>{if(vis0(e))return true;if(!isBox(e)||e.closest('[hidden],[aria-hidden=true]'))return false;if(e.checkVisibility)return e.checkVisibility();if(e.labels&&e.labels[0]&&vis0(e.labels[0]))return true;for(let p=e.parentElement,i=0;p&&i<4;i++,p=p.parentElement){if(vis0(p))return true}return false};
 function itext(r){const sl=[...r.querySelectorAll('select')].map(s=>{const sp=document.createElement('span');sp.textContent='['+(s.selectedIndex>=0?T(s.options[s.selectedIndex].text):'')+' ▾]';s.__d=s.style.display;s.style.display='none';s.after(sp);return [s,sp]});
 try{return r.innerText}finally{sl.forEach(([s,sp])=>{s.style.display=s.__d;sp.remove()})}}
 const dsig=R=>R?T((R.querySelector('h1,h2,h3')||R).innerText).slice(0,80)+'|'+R.querySelectorAll(FIELD).length:'';
@@ -125,7 +125,7 @@ function scope(){if(window.__gtAll)return null;const d=[...document.querySelecto
 function ctlOf(e){if(e.matches(FIELD))return e;if(e.tagName=='LABEL'){if(e.control)return e.control;const x=e.querySelector(FIELD);if(x)return x}
 for(let p=e,i=0;p&&i<4;i++,p=p.parentElement){const x=[...p.querySelectorAll(FIELD)].filter(x=>vis(x)||x.type=='file');if(x.length==1)return x[0];if(x.length>1)break}return null}
 function cx(q,form){window.__cxerr='';if(/^\d+$/.test(q))return (window.__cx||[])[+q];const root=scope()||document;
-if(/^[#.\[]/.test(q)){try{const e=root.querySelector(q)||document.querySelector(q);if(e)return e}catch(_){}}
+{const bi=document.getElementById(q);if(bi)return bi}if(/^[#.\[]/.test(q)){try{const e=root.querySelector(q)||document.querySelector(q);if(e)return e}catch(_){}}
 const lo=q.toLowerCase(),L=e=>lab(e).toLowerCase().replace(/\s*\*$/,'');const D=deep(root,0,0,[]).map(x=>x[0]).filter(e=>e.matches);
 const all=D.filter(e=>(e.matches(SEL)||e.matches('label,span,div,li,p,h1,h2,h3,h4,td,legend'))&&vis(e));
 if(form){const F=e=>flab(e).toLowerCase().replace(/\s*\*$/,'');const fs=D.filter(e=>e.matches(FIELD)&&!isBox(e)&&(vis(e)||e.type=='file'));
@@ -578,7 +578,8 @@ REST = ('fill', 'type', 'select', 'pick', 'choose', 'hover', 'check')
 GEO = {'worldwide': 92000000, 'eu': 91000000, 'europe': 91000000, 'cyprus': 106774002, 'poland': 105072130,
        'uae': 104305776, 'united arab emirates': 104305776, 'dubai': 104305776, 'uk': 101165590, 'united kingdom': 101165590,
        'us': 103644278, 'usa': 103644278, 'united states': 103644278, 'germany': 101282230, 'netherlands': 102890719,
-       'ireland': 104738515, 'canada': 101174742, 'saudi arabia': 100459316, 'pakistan': 101022442}
+       'ireland': 104738515, 'ie': 104738515, 'nl': 102890719, 'holland': 102890719, 'ksa': 100459316, 'saudi': 100459316,
+       'de': 101282230, 'pl': 105072130, 'cy': 106774002, 'gb': 101165590, 'england': 101165590, 'pk': 101022442, 'canada': 101174742, 'saudi arabia': 100459316, 'pakistan': 101022442}
 
 # one Easy Apply step: where we are, what is unanswered, which button moves on
 LISTEP = r"""const R=scope();const t=R?R.innerText:'';const it=R?scan():[];const pb=R&&R.querySelector('[role=progressbar],progress');
@@ -595,14 +596,15 @@ const fl=it.filter(f=>f.k!='button');const fn=/\.(pdf|docx?)\b/i;
 const qf=fl.filter(f=>{if(f.k=='file')return false;if(f.k=='radio'||f.k=='checkbox')return !fn.test(f.o)&&!fn.test(f.q);
 if(f.k=='select')return !/^\d+ options$/.test(f.o)&&!/@/.test(f.v);if(f.k=='textarea')return true;
 const v=String(f.v);return v===''||/\?/.test(f.l)||/^\d{1,2}$/.test(v)});
-const kind=qf.length?'questions':fl.some(f=>f.k=='file'||fn.test(f.o||''))||[...R?R.querySelectorAll('*'):[]].some(x=>!x.children.length&&fn.test(x.textContent||''))?'resume':fl.length?'contact':'profile';
-return JSON.stringify({dlg:!!R,h,pr,req,kind,next:nx?T(nx.innerText):'',submit:!!sub,done:/application (was )?sent|application submitted|you applied/i.test(t),
+const ct=fl.some(f=>f.k=='select'&&(/^\d+ options$/.test(f.o)||/@/.test(f.v)));const kind=ct?'contact':qf.length?'questions':fl.some(f=>f.k=='file'||fn.test(f.o||''))||[...R?R.querySelectorAll('*'):[]].some(x=>!x.children.length&&fn.test(x.textContent||''))?'resume':fl.length?'contact':'profile';
+const cl=!fl.length&&[...R?R.querySelectorAll('a,button'):[]].find(b=>vis(b)&&/continue|weiter|dalej|continuer|continuar/i.test(T(b.innerText)));
+if(cl)cl.setAttribute('data-gtcont','1');return JSON.stringify({dlg:!!R,h,pr,req,kind,cont:!!cl,next:nx?T(nx.innerText):'',submit:!!sub,done:/application (was )?sent|application submitted|you applied/i.test(t),
 review:!!sub||/^(100|(\d+)\/\2)$/.test(pr)||/review your application/i.test(t),resume:/upload resume|^resume$/im.test(t)||[...R?R.querySelectorAll('*'):[]].some(x=>!x.children.length&&/\.(pdf|docx?)\b/i.test(x.textContent||'')),sig:dsig(R),err})"""
 
 LIREVIEW = r"""const R=scope();if(!R)return 'no Easy Apply dialog open';window.__gtForm=dsig(R);const fn=/\.(pdf|docx?)\b/i;
 const cv=[...new Set([...R.querySelectorAll('*')].filter(x=>!x.children.length&&fn.test(x.textContent||'')).map(x=>T(x.textContent)))];
 const txt=x=>T(x.innerText||'');const ok=x=>txt(x)&&txt(x).length<300&&!x.querySelector('button,input,select,textarea');
-const pairs=[...R.querySelectorAll('*')].filter(x=>{const c=[...x.children].filter(y=>txt(y));return c.length==2&&c.every(ok)&&!c[0].matches('h1,h2,h3,h4')&&!/^(button|a|label)$/i.test(x.tagName)});
+const pairs=[...R.querySelectorAll('*')].filter(x=>{const c=[...x.children].filter(y=>txt(y));return c.length==2&&c.every(ok)&&!c.some(y=>y.matches('button,a,[role=button]'))&&!c[0].matches('h1,h2,h3,h4')&&!/^(button|a|label)$/i.test(x.tagName)});
 const inner=pairs.filter(x=>!pairs.some(y=>y!==x&&x.contains(y)));const seen=new Set(),out=[];
 const contact=a=>/@|^\+?[\d\s()-]{7,}$|\(\+\d+\)/.test(a)||fn.test(a);
 inner.forEach(x=>{const [q,a]=[...x.children].filter(y=>txt(y)).map(txt);if(contact(a)||contact(q)||seen.has(q))return;seen.add(q);out.push(q.slice(0,90)+' → '+a.slice(0,80))});
@@ -632,13 +634,12 @@ return T(t.slice(i,j>i?Math.min(j,i+500):i+500))+'\nEasy Apply: '+(ea?'yes':'no'
     if geo:
         url += '&geoId=%s' % geo
     elif place:
-        url += '&location=' + quote(place)
-        print('(no geoId for "%s": LinkedIn may use your saved location; pass geo=ID)' % place, file=sys.stderr)
+        sys.exit('no geoId known for "%s" (LinkedIn would ignore it and use your saved location). Known: %s. Or pass geo=ID' % (place, ', '.join(sorted(GEO))))
     if 'any' not in opts:
         url += '&f_AL=true'
     url += '&f_TPR=r%d' % (int(kv.get('days', 30)) * 86400)
     main(['go', url])
-    js_until('document.querySelectorAll("[componentkey^=\'job-card-component-ref-\'],[data-job-id],[data-occludable-job-id]").length', 15)
+    js_until('location.href.includes(%s)&&document.querySelectorAll(' % json.dumps('geoId=%s' % geo if geo else 'keywords=') + '"[componentkey^=\'job-card-component-ref-\'],[data-job-id],[data-occludable-job-id]").length', 15)
     print(js(r'''(()=>{const seen=new Set(),out=[];let ap=0;document.querySelectorAll("[componentkey^='job-card-component-ref-'],[data-job-id],[data-occludable-job-id]").forEach(c=>{
 const id=(c.getAttribute('componentkey')||'').replace('job-card-component-ref-','')||c.getAttribute('data-job-id')||c.getAttribute('data-occludable-job-id');
 if(!id||seen.has(id))return;seen.add(id);const L=[...new Set((c.innerText||'').split('\n').map(s=>s.trim()).filter(s=>s&&!/^(Promoted|Viewed|Saved|·)$/.test(s)))];
@@ -660,7 +661,7 @@ if(!b.length)return 'NOBUTTON';b[0].click();return lab(b[0])""")
     if st.lower().startswith('continue'):
         print('(resumed a draft: LinkedIn drops uploaded cover letters on drafts, re-upload if one is needed)')
     js_until('(()=>{%s;return scope()})()' % DEEP.replace('BACKING', '2'), 10)
-    picked, last = False, ''
+    picked, last, retried = False, '', False
     for _ in range(10):
         time.sleep(0.8)
         s = json.loads(page(SCAN + ';' + LISTEP))
@@ -674,12 +675,23 @@ if(!b.length)return 'NOBUTTON';b[0].click();return lab(b[0])""")
             print('== AT REVIEW. Check, then click the submit button by its exact text')
             print(page(SCAN + ';' + LIREVIEW))
             return
+        if s['cont']:
+            print('(passed "%s")' % s['h'][:50])
+            js('document.querySelector("[data-gtcont]").click();1')
+            time.sleep(1.5)
+            continue
         if s['resume'] and cv and not picked:
             picked = True
             sys.stdout.write('CV: ')
             main(['upload', cv])
+            time.sleep(1)
             continue
         plain = s['kind'] != 'questions'
+        if s['sig'] == last and s['next'] and not retried:
+            retried = True
+            js('document.querySelector("[data-gtnext]").click();1')
+            time.sleep(1.5)
+            continue
         if s['sig'] == last or not s['next'] or s['req'] or not plain:
             print('== %s (page "%s", %s)%s' % ('STUCK' if s['sig'] == last else 'QUESTIONS', s['h'], (s['pr'] + ('' if '/' in s['pr'] else '%')) if s['pr'] else '?',
                                                 ('\nunanswered: ' + ' | '.join(r[:60] for r in s['req'])) if s['req'] else ''))
@@ -688,7 +700,7 @@ if(!b.length)return 'NOBUTTON';b[0].click();return lab(b[0])""")
             print('\n'.join(l for l in page(SCAN + ';' + FORM).splitlines() if ' button "' not in l))
             print('next button: %s' % (s['next'] or 'none'))
             return
-        last = s['sig']
+        last, retried = s['sig'], False
         js('document.querySelector("[data-gtnext]").click();1')
     print('gave up after 10 pages (b form)')
 

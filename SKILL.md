@@ -38,7 +38,7 @@ Drive the user's real, logged-in Chrome from Bash. Everything is text. `BROWSER=
 | `b until url~PART` / `until text TEXT` / `until gone TEXT` / `until 'JS'` `[sec]` | wait without writing JS |
 | `b wait TEXT [sec]` | wait until text appears |
 | `b js 'CODE'` | any JS (expression or statements), prints result; objects as JSON, `ERR: msg` on throw. Runs in an isolated world: page DOM yes, page JS variables no. `$dlg` = the open dialog `form` uses (or document); element lists print one line each |
-| `b li jobs QUERY [PLACE\|geo=ID] [days=30] [all] [any]` | LinkedIn Easy Apply jobs in a place (EU, Poland, UAE, UK, US... mapped to geoId; else pass geo=ID). Hides jobs already Applied (`all` shows them), `any` = not only Easy Apply |
+| `b li jobs QUERY [PLACE\|geo=ID] [days=30] [all] [any]` | LinkedIn Easy Apply jobs in a place (EU, PL, NL, DE, IE, CY, UAE, KSA, UK, US... mapped to geoId; unknown names are refused, pass geo=ID). Hides jobs already Applied (`all` shows them), `any` = not only Easy Apply |
 | `b li job ID` | one job summary in ~300 tokens |
 | `b li apply ID [CVNAME]` | opens Easy Apply (or Continue on a draft), picks the saved CV, presses Next through contact/resume pages, stops at questions (prints only the fields, unanswered ones, errors) or review. Never submits. Drafts resumed via Continue lose an uploaded cover letter: re-upload |
 | `b li review` | compact review page: progress, CV name, answers |
