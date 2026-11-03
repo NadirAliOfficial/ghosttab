@@ -1006,7 +1006,10 @@ def yt(a):
             item = True
             break
     if not item:
-        sys.exit('menu opened but no "Pin" item (b t 400)')
+        who = json.loads(page('return JSON.stringify([T((document.querySelector("ytd-video-owner-renderer #channel-name a")||{}).innerText||"?"),'
+                              '[...document.querySelectorAll("ytd-comment-simplebox-renderer img")].map(i=>i.alt).filter(Boolean)[0]||"?"])'))
+        sys.exit('menu opened but no "Pin" item: only the video owner can pin. Video owner: %s, signed in as: %s%s' % (
+            who[0], who[1], '' if who[0] != who[1] else ' (same name; check the account switcher)'))
     for _ in range(16):
         pump()
         time.sleep(0.5)
