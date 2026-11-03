@@ -37,8 +37,12 @@ Drive the user's real, logged-in Chrome from Bash. Everything is text. `BROWSER=
 | `b log [N]` | last N actions taken (time, browser, command) — show the user what was done |
 | `b until url~PART` / `until text TEXT` / `until gone TEXT` / `until 'JS'` `[sec]` | wait without writing JS |
 | `b wait TEXT [sec]` | wait until text appears |
-| `b js 'CODE'` | any JS (expression or statements), prints result; objects as JSON, `ERR: msg` on throw. Runs in an isolated world: page DOM yes, page JS variables no |
-| `b li jobs QUERY` / `b li job ID` | LinkedIn job search (id, title, company, place, Easy Apply) / one job summary in ~300 tokens |
+| `b js 'CODE'` | any JS (expression or statements), prints result; objects as JSON, `ERR: msg` on throw. Runs in an isolated world: page DOM yes, page JS variables no. `$dlg` = the open dialog `form` uses (or document); element lists print one line each |
+| `b li jobs QUERY [PLACE\|geo=ID] [days=30] [all] [any]` | LinkedIn Easy Apply jobs in a place (EU, Poland, UAE, UK, US... mapped to geoId; else pass geo=ID). Hides jobs already Applied (`all` shows them), `any` = not only Easy Apply |
+| `b li job ID` | one job summary in ~300 tokens |
+| `b li apply ID [CVNAME]` | opens Easy Apply (or Continue on a draft), picks the saved CV, presses Next through contact/resume pages, stops at questions (prints only the fields, unanswered ones, errors) or review. Never submits. Drafts resumed via Continue lose an uploaded cover letter: re-upload |
+| `b li review` | compact review page: progress, CV name, answers |
+| `b close mine` | close the tabs `b open` made in your window (`open` also switches to an existing tab with the same URL) |
 | `b ocr [FILTER]` | read the window's pixels as text ON-DEVICE (Apple Vision, ~0.7s, zero image tokens) → `x,y text` in page coords. For canvas, images, PDFs, charts, anything `text` misses |
 | `b clickat X Y` | click a page point from `ocr` (works in bg) · `b rclickat X Y` real mouse there |
 | `b bg on\|off\|close\|status` | BACKGROUND MODE: a hidden minimized window; never comes to front, nothing visible on screen. `off` parks it for instant reuse, `close` removes it |
@@ -78,6 +82,7 @@ If the hidden window was closed, `b` opens a new blank one by itself and says so
 7. Visual-only content: `b ocr` (text + coordinates, no image tokens) → `b clickat X Y`. `b shot` only if OCR can't answer, and say why.
 
 ## Rules
+- Built-in guards: a click whose target is Submit/Send/Pay/Apply/Post needs its exact text or number (`--final` allows fuzzy); it is refused if the page already says submitted/applied or the dialog changed since your last `form`/`el`/`li review` (look again, or `--force`). Every final click is logged to `submits.log`. In front mode, `rclick`/`type`/`key`/`rupload` refuse if the user switched tab or site since b's last command (`b url` to accept).
 - **Never do the final action without the user's explicit OK in this conversation**: Send, Submit, Post, Pay, Buy, Order, Delete, Accept, Confirm, or Enter on a submitting form. Fill the draft, tell the user it's ready, wait for "send".
 - Never type passwords, 2FA codes or card numbers; ask the user to log in.
 - Real input (`rclick`/`type`/`key`/`rupload`) moves the user's actual mouse/keyboard focus — tell the user briefly before a long sequence.

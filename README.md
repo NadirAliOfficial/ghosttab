@@ -59,12 +59,17 @@ Optional for real mouse/keyboard: System Settings → Privacy & Security → **A
 | `rclick` `type` `key COMBO` `rupload` `rclickat` | real input (front window) |
 | `log [N]` | what the agent did, when |
 | `until url~X\|text X\|gone X\|'JS'` | wait without writing JS |
-| `li jobs QUERY` · `li job ID` | LinkedIn job search / summary |
+| `li jobs QUERY [PLACE\|geo=ID]` · `li job ID` | LinkedIn Easy Apply search by geoId (hides Applied) / summary |
+| `li apply ID [CV]` · `li review` | Easy Apply up to the questions or review page (never submits) / compact review |
+| `close mine` | close tabs `b open` made; `open` reuses a tab with the same URL |
 | `console` · `wait TEXT [sec]` · `js CODE` · `shot` | debug, waits, raw JS, last-resort screenshot |
 | `bg on\|off\|close\|status` | background mode (hidden, reusable) |
 | `do 'cmd ; cmd'` | batch |
 
 Aliases: `t`=tail `x`=text `e`=el `c`=click `f`=fill `g`=go `o`=open `u`=url `k`=key `s`=scroll `w`=wait `up`=upload.
+
+## Safety
+Submit/Send/Pay-like clicks need exact text or a number, are refused on stale or already-submitted state, and are logged to `submits.log`. Real-input commands refuse if you switched tab while an agent was working.
 
 ## Limits
 Cross-origin iframes (payment fields, third-party sign-in) aren't readable — by design. CAPTCHAs and 2FA are left to you. Off-screen windows throttle video/animation; reading and clicking are unaffected. Sites with a strict CSP (LinkedIn) block the file-picker stub; use a saved file (`upload NAME`), `drop`, or `rupload`. A few sites accept only trusted input — use the real-input commands in the front window.

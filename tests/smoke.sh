@@ -18,5 +18,13 @@ ok "$(b choose Authorized Yes)" "chosen: Authorized? → Yes" choose
 ok "$(b form)" 'radio "Authorized?": .* Yes \[x\]' form
 ok "$(b js 'throw new Error("x")')" "ERR: x" js-errors
 ok "$(b until text clicked 3)" "ok" until
+b go 'data:text/html,<div role=dialog aria-modal=true style="width:400px;height:300px"><h3>Questions</h3><div><p>Asset classes?</p><div><div><div><input type=radio name=q id=r_1 aria-label="Asset classes?" style="opacity:0;width:0;height:0"></div></div><p>Yes</p></div><div><div><div><input type=radio name=q id=r_2 aria-label="Asset classes?" style="opacity:0;width:0;height:0"></div></div><p>No</p></div></div><select id=cc><option>Pakistan (+92)</option><option>Poland (+48)</option></select><button>Submit application</button></div>' >/dev/null
+ok "$(b choose "asset classes" No)" "chosen: Asset classes? → No" li-radio
+ok "$(b form)" 'radio "Asset classes?": 0 Yes | 1 No \[x\]' li-radio-form
+ok "$(b x)" "\[Pakistan (+92) ▾\]" select-collapsed
+ok "$(b js '$dlg.querySelectorAll("input")')" "2 elements" js-dlg
+ok "$(b c Submit)" "REFUSED" final-fuzzy
+b js 'document.querySelector("h3").textContent="Other";1' >/dev/null
+ok "$(b c 'Submit application')" "dialog changed" final-stale
 b bg off >/dev/null
 rm -rf "$T"; exit ${FAIL:-0}
