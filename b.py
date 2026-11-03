@@ -157,7 +157,7 @@ return i+' '+t+' '+(isBoxy(e)?ques(e).slice(0,60)+' → '+on(e).slice(0,40):lab(
 # One scan of the active form/dialog: kind, label, required, value, options. Sets window.__cx for numbers.
 SCAN = r'''function scan(){const R=scope();let root=R;if(!root){const af=document.activeElement&&document.activeElement.closest&&document.activeElement.closest('form');
 root=af||[...document.forms].filter(vis).sort((a,b)=>b.elements.length-a.elements.length)[0]||document}
-const a=deep(root,0,0,[]).filter(x=>{const e=x[0];return e.matches&&(e.matches(FIELD)||e.matches('[role=radio],[role=checkbox]')||isBoxy(e)||(root!==document&&e.matches('button,[role=button]')))&&(vis(e)||e.type=='file')});
+const a=deep(root,0,0,[]).filter(x=>{const e=x[0];if(e.matches&&e.tagName!='INPUT'&&e.matches('[role=combobox]')&&e.querySelector('input:not([type=hidden])'))return false;return e.matches&&(e.matches(FIELD)||e.matches('[role=radio],[role=checkbox]')||isBoxy(e)||(root!==document&&e.matches('button,[role=button]')))&&(vis(e)||e.type=='file')});
 window.__cx=a.map(x=>x[0]);window.__cxa=a;window.__root=root;
 return a.map(x=>{const e=x[0],role=e.getAttribute('role')||'';
 const k=e.tagName=='SELECT'?'select':e.tagName=='TEXTAREA'?'textarea':isBox(e)?e.type:/^(radio|checkbox)$/.test(role)?role:isBoxy(e)?(/radio/i.test(e.tagName)?'radio':'checkbox'):e.type=='file'?'file':
@@ -621,7 +621,9 @@ def settle(msg):
         time.sleep(0.25)
         s = js('window.__gtSig===undefined?"navigated":(location.href+"|"+document.getElementsByTagName("*").length)==window.__gtSig?"":"page changed"')
         if s:
-            return '%s → %s' % (msg, 'navigating' if s == 'missing value' else s)
+            time.sleep(0.6)
+            code = js('/(security|verification|confirmation) code|enter the (\\d+[- ]digit )?code|code (we|was) sent/i.test(document.body.innerText)', soft=True) == 'true'
+            return '%s → %s%s' % (msg, 'navigating' if s == 'missing value' else s, '\n== EMAIL/SMS CODE NEEDED: ask the user for the code' if code else '')
     return msg + ' → no change yet'
 
 
@@ -642,6 +644,7 @@ def bg_new():
 def bg_nav(c, arg, retry=True):
     # AppleScript navigation un-minimizes and activates the browser; navigate from inside the page instead
     js('window.__gtOld=1;1')
+    href0 = js('location.href')
     url = ''
     if c in ('open', 'go'):
         url = arg if '://' in arg or arg.startswith(('data:', 'about:')) else 'https://' + arg
@@ -661,12 +664,16 @@ def bg_nav(c, arg, retry=True):
         js({'back': 'history.back();1', 'reload': 'location.reload();1'}[c])
     t0, st = time.time(), 'old'
     while time.time() - t0 < 20:
-        st = js('window.__gtOld?"old":document.readyState', soft=True)
-        if st in ('interactive', 'complete') or (st == 'old' and url and time.time() - t0 > 12):
+        st = js('window.__gtOld?(location.href!=%s&&document.readyState=="complete"&&performance.now()>0?"spa":"old"):document.readyState' % json.dumps(href0), soft=True)
+        if st == 'spa' and time.time() - t0 > 1.5:
+            st = 'complete'
+        if st in ('interactive', 'complete') or (st in ('old', 'spa') and url and time.time() - t0 > 12):
             break
         time.sleep(0.25)
-    if st != 'old':
+    if st not in ('old', 'spa'):
         print('ok')
+    elif st == 'spa':
+        print('ok (in-app navigation)')
     elif url and retry and not xbg() and js('location.href') != url:
         # navigation ignored (tab wedged): replace the hidden window and try once more
         osa('closewin')
@@ -1232,7 +1239,7 @@ const pe=new ClipboardEvent("paste",{clipboardData:dt,bubbles:true,cancelable:tr
 if(!pe.defaultPrevented){const L=v.split("\\n");L.forEach((l,i)=>{if(l)document.execCommand("insertText",false,l);if(i<L.length-1)document.execCommand("insertParagraph")})}}
 else{const p=e.tagName=="TEXTAREA"?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;Object.getOwnPropertyDescriptor(p,"value").set.call(e,v);
 e.dispatchEvent(new Event("input",{bubbles:true}));e.dispatchEvent(new Event("change",{bubbles:true}))}
-return "filled "+e.tagName.toLowerCase()+" \\""+flab(e).slice(0,40)+"\\" ("+v.length+" chars)"''' % v,
+const fv=e.isContentEditable?null:e.value;return "filled "+e.tagName.toLowerCase()+" \\""+flab(e).slice(0,40)+"\\" ("+v.length+" chars)"+(fv!==null&&fv!==v?" → now "+JSON.stringify(fv.slice(0,60)):"")''' % v,
             'select': '''const v=%s;if(e.tagName=="LABEL"&&e.control)e=e.control;if(!e.options)return "not a <select>; for comboboxes use pick, else click to open then click the option";
 const o=[...e.options].find(o=>o.text.trim().toLowerCase()==v.toLowerCase())||[...e.options].find(o=>o.text.trim().toLowerCase().includes(v.toLowerCase()));
 if(!o)return "no option; have: "+[...e.options].map(o=>o.text.trim()).join(", ");e.value=o.value;e.dispatchEvent(new Event("input",{bubbles:true}));e.dispatchEvent(new Event("change",{bubbles:true}));return "selected "+o.text.trim()+" in \\""+flab(e).slice(0,40)+"\\""''' % v,
