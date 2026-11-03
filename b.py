@@ -160,7 +160,7 @@ return a.map(x=>{const e=x[0],role=e.getAttribute('role')||'';
 const k=e.tagName=='SELECT'?'select':e.tagName=='TEXTAREA'?'textarea':isBox(e)?e.type:/^(radio|checkbox)$/.test(role)?role:e.type=='file'?'file':
 (e.tagName=='BUTTON'||role=='button'||/^(submit|button|reset|image)$/.test(e.type))?'button':(role=='combobox'||inst(e))?'combo':e.isContentEditable?'editor':'text';
 const l0=k=='button'?lab(e):flab(e),l=l0.replace(/\s*\*$/,'');let v='',o='';
-if(k=='select'){v=e.selectedIndex>=0?T(e.options[e.selectedIndex].text):'';o=[...e.options].map(o=>T(o.text)).filter(Boolean);o=o.slice(0,12).join(', ')+(o.length>12?' +'+(o.length-12):'')}
+if(k=='select'){v=e.selectedIndex>=0?T(e.options[e.selectedIndex].text):'';o=[...e.options].map(o=>T(o.text)).filter(Boolean);o=o.length>30?o.length+' options':o.slice(0,12).join(', ')+(o.length>12?' +'+(o.length-12):'')}
 else if(k=='combo'){let s=null;for(let p=e.parentElement,j=0;p&&!s&&j<5;j++,p=p.parentElement)s=p.querySelector('[class*=singleValue],[class*=single-value],[class*=multiValue],[class*=multi-value]');v=s?T(s.innerText):e.value}
 else if(k=='file')v=e.files&&e.files.length?e.files[0].name:'';else if(k=='editor')v=T(e.innerText);
 else if(k=='radio'||k=='checkbox')v=e.tagName=='INPUT'?e.checked:e.getAttribute('aria-checked')=='true';else if(k!='button')v=e.value;
@@ -581,20 +581,32 @@ GEO = {'worldwide': 92000000, 'eu': 91000000, 'europe': 91000000, 'cyprus': 1067
        'ireland': 104738515, 'canada': 101174742, 'saudi arabia': 100459316, 'pakistan': 101022442}
 
 # one Easy Apply step: where we are, what is unanswered, which button moves on
-LISTEP = r"""const R=scope();const t=R?R.innerText:'';const it=R?scan():[];const pr=(t.match(/(\d+)\s*%/)||[])[1]||'';
+LISTEP = r"""const R=scope();const t=R?R.innerText:'';const it=R?scan():[];const pb=R&&R.querySelector('[role=progressbar],progress');
+const pr=(t.match(/(\d+)\s*%/)||[])[1]||((t.match(/\b(\d+)\s*\/\s*(\d+)\b/)||[]).slice(1).join('/'))||(pb&&(pb.getAttribute('aria-valuenow')||pb.value))||'';
 const h=R?T((R.querySelector('h3,h2')||{}).innerText||''):'';const req=[];const seen={};
 it.forEach(f=>{if(f.k=='button')return;if(f.k=='radio'||f.k=='checkbox'){const k=f.q;if(!(k in seen))seen[k]=f.r?0:1;if(f.v)seen[k]=1;return}if(f.r&&(f.v===''||f.v===false||/^select an option$/i.test(f.v)))req.push(f.l)});
 Object.keys(seen).forEach(k=>{if(!seen[k])req.push(k)});
-const btn=[...R?R.querySelectorAll('button'):[]].filter(b=>vis(b)&&!b.disabled);const nx=btn.find(b=>/^(next|review|continue)$/i.test(T(b.innerText)));
-const sub=btn.find(b=>/submit application/i.test(T(b.innerText)+' '+(b.getAttribute('aria-label')||'')));
+const btn=[...R?R.querySelectorAll('button'):[]].filter(b=>vis(b)&&!b.disabled);const NX='[data-easy-apply-next-button],[data-live-test-easy-apply-next-button],[data-live-test-easy-apply-review-button]';
+const nx=btn.find(b=>b.matches(NX))||btn.find(b=>/^(next|review|continue)$/i.test(T(b.innerText))||/next step|review your application/i.test(b.getAttribute('aria-label')||''));
+document.querySelectorAll('[data-gtnext]').forEach(x=>x.removeAttribute('data-gtnext'));if(nx)nx.setAttribute('data-gtnext','1');
+const sub=btn.find(b=>b.matches('[data-live-test-easy-apply-submit-button],[data-easy-apply-submit-button]')||/submit application/i.test(T(b.innerText)+' '+(b.getAttribute('aria-label')||'')));
 const err=R?[...R.querySelectorAll('[role=alert],.artdeco-inline-feedback--error,[class*=error]')].map(x=>T(x.innerText)).filter(Boolean).slice(0,5):[];
-return JSON.stringify({dlg:!!R,h,pr,req,next:nx?T(nx.innerText):'',submit:!!sub,done:/application (was )?sent|application submitted|you applied/i.test(t),
-review:!!sub||/review your application/i.test(t),resume:/upload resume|^resume$/im.test(t),sig:dsig(R),err})"""
+const fl=it.filter(f=>f.k!='button');const fn=/\.(pdf|docx?)\b/i;
+const qf=fl.filter(f=>{if(f.k=='file')return false;if(f.k=='radio'||f.k=='checkbox')return !fn.test(f.o)&&!fn.test(f.q);
+if(f.k=='select')return !/^\d+ options$/.test(f.o)&&!/@/.test(f.v);if(f.k=='textarea')return true;
+const v=String(f.v);return v===''||/\?/.test(f.l)||/^\d{1,2}$/.test(v)});
+const kind=qf.length?'questions':fl.some(f=>f.k=='file'||fn.test(f.o||''))||[...R?R.querySelectorAll('*'):[]].some(x=>!x.children.length&&fn.test(x.textContent||''))?'resume':fl.length?'contact':'profile';
+return JSON.stringify({dlg:!!R,h,pr,req,kind,next:nx?T(nx.innerText):'',submit:!!sub,done:/application (was )?sent|application submitted|you applied/i.test(t),
+review:!!sub||/^(100|(\d+)\/\2)$/.test(pr)||/review your application/i.test(t),resume:/upload resume|^resume$/im.test(t)||[...R?R.querySelectorAll('*'):[]].some(x=>!x.children.length&&/\.(pdf|docx?)\b/i.test(x.textContent||'')),sig:dsig(R),err})"""
 
-LIREVIEW = r"""const R=scope();if(!R)return 'no Easy Apply dialog open';window.__gtForm=dsig(R);const L=itext(R).split('\n').map(T).filter(Boolean);const out=[];let prev='';
-const pr=(R.innerText.match(/(\d+)\s*%/)||[])[1];const cv=L.filter(l=>/\.(pdf|docx?)\b/i.test(l));
-for(const l of L){if(l==prev||/^(edit|back|dismiss|review|done|\d+\s*%|.*\.(pdf|docx?)|last used.*|uploaded on.*)$/i.test(l)||l.length>160)continue;prev=l;out.push(l.slice(0,100))}
-return (pr?'progress '+pr+'%\n':'')+'CV: '+(cv.join(', ')||'none shown')+'\n'+out.slice(0,70).join('\n')"""
+LIREVIEW = r"""const R=scope();if(!R)return 'no Easy Apply dialog open';window.__gtForm=dsig(R);const fn=/\.(pdf|docx?)\b/i;
+const cv=[...new Set([...R.querySelectorAll('*')].filter(x=>!x.children.length&&fn.test(x.textContent||'')).map(x=>T(x.textContent)))];
+const txt=x=>T(x.innerText||'');const ok=x=>txt(x)&&txt(x).length<300&&!x.querySelector('button,input,select,textarea');
+const pairs=[...R.querySelectorAll('*')].filter(x=>{const c=[...x.children].filter(y=>txt(y));return c.length==2&&c.every(ok)&&!c[0].matches('h1,h2,h3,h4')&&!/^(button|a|label)$/i.test(x.tagName)});
+const inner=pairs.filter(x=>!pairs.some(y=>y!==x&&x.contains(y)));const seen=new Set(),out=[];
+const contact=a=>/@|^\+?[\d\s()-]{7,}$|\(\+\d+\)/.test(a)||fn.test(a);
+inner.forEach(x=>{const [q,a]=[...x.children].filter(y=>txt(y)).map(txt);if(contact(a)||contact(q)||seen.has(q))return;seen.add(q);out.push(q.slice(0,90)+' → '+a.slice(0,80))});
+return 'CV: '+(cv.join(', ')||'none shown')+'\n'+(out.slice(0,60).join('\n')||'(no Q→A pairs found; b t 1500)')"""
 
 
 def li(a):
@@ -659,7 +671,7 @@ if(!b.length)return 'NOBUTTON';b[0].click();return lab(b[0])""")
             print('application already sent (dialog says so)')
             return
         if s['review']:
-            print('== AT REVIEW (%s%%). Check, then: b click "Submit application"' % s['pr'])
+            print('== AT REVIEW. Check, then click the submit button by its exact text')
             print(page(SCAN + ';' + LIREVIEW))
             return
         if s['resume'] and cv and not picked:
@@ -667,9 +679,9 @@ if(!b.length)return 'NOBUTTON';b[0].click();return lab(b[0])""")
             sys.stdout.write('CV: ')
             main(['upload', cv])
             continue
-        plain = re.search(r'contact info|^resume$|work experience|education|photo|home address', s['h'], re.I)
+        plain = s['kind'] != 'questions'
         if s['sig'] == last or not s['next'] or s['req'] or not plain:
-            print('== %s (page "%s", %s%%)%s' % ('STUCK' if s['sig'] == last else 'QUESTIONS', s['h'], s['pr'] or '?',
+            print('== %s (page "%s", %s)%s' % ('STUCK' if s['sig'] == last else 'QUESTIONS', s['h'], (s['pr'] + ('' if '/' in s['pr'] else '%')) if s['pr'] else '?',
                                                 ('\nunanswered: ' + ' | '.join(r[:60] for r in s['req'])) if s['req'] else ''))
             if s['err']:
                 print('errors: ' + ' | '.join(s['err']))
@@ -677,7 +689,7 @@ if(!b.length)return 'NOBUTTON';b[0].click();return lab(b[0])""")
             print('next button: %s' % (s['next'] or 'none'))
             return
         last = s['sig']
-        page('const b=[...scope().querySelectorAll("button")].find(b=>T(b.innerText)==N);b.click();return 1', N=s['next'])
+        js('document.querySelector("[data-gtnext]").click();1')
     print('gave up after 10 pages (b form)')
 
 
