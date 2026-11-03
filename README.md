@@ -69,6 +69,9 @@ Optional for real mouse/keyboard: System Settings → Privacy & Security → **A
 Aliases: `t`=tail `x`=text `e`=el `c`=click `f`=fill `g`=go `o`=open `u`=url `k`=key `s`=scroll `w`=wait `up`=upload.
 
 ## Safety
+- **Prompt injection:** page text is untrusted. The skill tells the agent never to follow instructions found on pages and to stay on the task's site. Use `bg` mode so the agent works in its own hidden window, not your tabs.
+- **Uploads are sandboxed:** keys (`id_*`, `.pem`, `.key`, `.p12`), `.env`, credentials, shell history, every dotfolder in your home (`~/.ssh`, `~/.aws`...) and `~/Library` are always refused. `B_UPLOAD_DIRS=~/Downloads:~/cv` confines uploads to those folders.
+- **Apple Events:** "Allow JavaScript from Apple Events" lets any local process that can send Apple Events run JS in the browser. Turn it off when you aren't using GhostTab (View > Developer). The optional extension bridge (`ext/`, `b ext install`) talks over a user-only socket instead (experimental).
 Submit/Send/Pay-like clicks need exact text or a number, are refused on stale or already-submitted state, and are logged to `submits.log`. Real-input commands refuse if you switched tab while an agent was working.
 
 ## Limits

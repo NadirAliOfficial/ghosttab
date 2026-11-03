@@ -138,7 +138,7 @@ let m=all.filter(e=>L(e)===lo);if(!m.length)m=all.filter(e=>L(e).includes(lo));
 m.sort((a,b)=>(b.matches(SEL)-a.matches(SEL))||(L(a).length-L(b).length));return m[0]}
 function pos(e){const all=window.__cxa||[];const f=all.find(x=>x[0]===e)||[e,0,0];e.scrollIntoView({block:'center'});const r=e.getBoundingClientRect();
 const z=devicePixelRatio/BACKING;return [screenX+(outerWidth-innerWidth*z)/2+(f[1]+r.x+r.width/2)*z, screenY+(outerHeight-innerHeight*z)+(f[2]+r.y+r.height/2)*z]}
-function MW(code){const d=document.documentElement,s=document.createElement('script');const n=[...document.querySelectorAll('script')].find(x=>x.nonce);if(n)s.nonce=n.nonce;
+function MW(code){if(window.__gtMain){try{const r=(0,eval)('(()=>{'+code+'})()');return r===undefined?null:r}catch(e){if(!(e instanceof EvalError))return 'ERR: '+e.message}}const d=document.documentElement,s=document.createElement('script');const n=[...document.querySelectorAll('script')].find(x=>x.nonce);if(n)s.nonce=n.nonce;
 d.removeAttribute('data-gtr');try{s.textContent='(()=>{let r;try{r=(()=>{'+code+'})()}catch(e){r="ERR: "+e.message}document.documentElement.setAttribute("data-gtr",JSON.stringify(r===undefined?null:r))})()';(document.head||d).appendChild(s);s.remove()}catch(_){}
 const r=d.getAttribute('data-gtr');d.removeAttribute('data-gtr');return r===null?'CSP':JSON.parse(r)}
 function inst(n){if(!n)return null;const k=Object.keys(n).find(k=>k.startsWith('__reactFiber$')||k.startsWith('__reactInternalInstance$'));let f=k&&n[k];
@@ -257,8 +257,115 @@ def osa(*args, wid=None, soft=False):
     return out
 
 
+SOCK = os.path.expanduser('~/.ghosttab/%s.sock' % ('brave' if 'Brave' in APP else 'chrome'))
+
+
+class ExtDown(Exception):
+    pass
+
+
+def ext(op, timeout=None, **kw):
+    """One request to the GhostTab extension (CDP in the hidden tab) via the native host's socket."""
+    import socket
+    t = timeout or TIMEOUT
+    s = socket.socket(socket.AF_UNIX)
+    s.settimeout(t + 3)
+    try:
+        s.connect(SOCK)
+    except OSError:
+        raise ExtDown()
+    kw.update(op=op, bg=bool(bgwin()), timeout=t)
+    s.sendall((json.dumps(kw) + '\n').encode())
+    buf = b''
+    try:
+        while not buf.endswith(b'\n'):
+            chunk = s.recv(1 << 20)
+            if not chunk:
+                break
+            buf += chunk
+    except OSError:
+        buf = b''
+    s.close()
+    r = json.loads(buf) if buf else {'ok': False, 'e': 'timeout'}
+    if not r['ok']:
+        raise RuntimeError(r['e'])
+    return r['r']
+
+
+def xbg():
+    return bgwin() == 'ext'
+
+
 def js(code, soft=False):
+    if xbg():
+        try:
+            return ext('eval', code=code)
+        except ExtDown:
+            sys.exit('GhostTab extension not connected (is %s running with the extension on? b ext status)' % APP)
+        except RuntimeError as e:
+            if str(e) != 'timeout':
+                sys.exit('extension: %s' % e)
+            if soft:
+                return 'timeout'
+            sys.exit('page did not answer in %ds; it may still have acted, check b url / b t 300. Longer wait: B_TIMEOUT=90 b ...' % TIMEOUT)
     return osa('js', code, soft=soft)
+
+
+def x_click(x, y, n=1):
+    ext('click', x=x, y=y, n=n)
+
+
+XKEYS = {'enter': ('Enter', 13, '\r'), 'return': ('Enter', 13, '\r'), 'tab': ('Tab', 9, ''), 'esc': ('Escape', 27, ''),
+         'escape': ('Escape', 27, ''), 'backspace': ('Backspace', 8, ''), 'delete': ('Delete', 46, ''), 'space': (' ', 32, ' '),
+         'up': ('ArrowUp', 38, ''), 'down': ('ArrowDown', 40, ''), 'left': ('ArrowLeft', 37, ''), 'right': ('ArrowRight', 39, ''),
+         'pageup': ('PageUp', 33, ''), 'pagedown': ('PageDown', 34, ''), 'home': ('Home', 36, ''), 'end': ('End', 35, '')}
+
+
+def x_key(combo):
+    parts = combo.lower().split('+')
+    k = parts[-1]
+    mod = sum({'alt': 1, 'opt': 1, 'ctrl': 2, 'cmd': 4, 'meta': 4, 'shift': 8}[p] for p in parts[:-1])
+    if k in XKEYS:
+        key, kc, text = XKEYS[k]
+        code = 'Space' if k == 'space' else key
+    else:
+        key, kc, text = k, ord(k.upper()), k
+        code = 'Key' + k.upper() if k.isalpha() else 'Digit' + k if k.isdigit() else ''
+    if mod & 8 and len(key) == 1:
+        key = text = key.upper()
+    if mod & 6:
+        text = ''
+    cmd = {'a': 'selectAll', 'c': 'copy', 'v': 'paste', 'x': 'cut', 'z': 'undo'}.get(k) if mod & 4 else None
+    ext('key', key=key, code=code, kc=kc, mod=mod, text=text or None, commands=[cmd] if cmd else None)
+
+
+# find the file input for a target (or the page); else return the target's centre for a trusted click
+XFILE = r'''let f=e&&e.tagName=='INPUT'&&e.type=='file'?e:null;
+if(!f&&e){f=e.querySelector('input[type=file]');const c=e.closest('form,section,[role=dialog],div');if(!f&&c)f=c.querySelector('input[type=file]')}
+if(!f&&!e)f=deep(scope()||document,0,0,[]).map(x=>x[0]).find(x=>x.tagName=='INPUT'&&x.type=='file');
+window.__gtEl=f||null;if(f)return 'INPUT';if(!e)return 'NONE';e.scrollIntoView({block:'center'});const r=e.getBoundingClientRect();return JSON.stringify([r.x+r.width/2,r.y+r.height/2])'''
+
+
+def x_upload(q, path):
+    out = target(q, XFILE) if q else page('let e=null;' + XFILE)
+    name = os.path.basename(path)
+    if out == 'INPUT':
+        ext('files', expr='window.__gtEl', files=[path])
+        return 'attached %s' % name
+    ext('arm', files=[path])
+    if out == 'NONE':
+        return 'file chooser armed with %s: now click the upload button (b click / b rclick)' % name
+    if not out.startswith('['):
+        return out
+    x_click(*json.loads(out))
+    for _ in range(25):
+        time.sleep(0.2)
+        if ext('armed') == 'used':
+            return 'attached %s via the file chooser' % name
+    return 'clicked, but no file chooser opened yet (armed: the next one gets %s)' % name
+
+
+VPOS = 'const f=(window.__cxa||[]).find(x=>x[0]===e)||[e,0,0];e.scrollIntoView({block:"center"});const r=e.getBoundingClientRect();return JSON.stringify([f[1]+r.x+r.width/2,f[2]+r.y+r.height/2])'
 
 
 DLG = 'var $dlg=(()=>{const BACKING=2;%s;return scope()||document})();' % DEEP
@@ -296,6 +403,8 @@ def page(body, real=False, **v):
 
 def js_big(code):
     """Run JS too large for argv (file chunks) by embedding it in the script via stdin."""
+    if xbg():
+        return js(code)
     w = 'window id %s' % bgwin() if bgwin() else 'window 1'
     lit = code.replace('\\', '\\\\').replace('"', '\\"')
     r = subprocess.run(['osascript', '-'], input='tell application "%s" to execute active tab of %s javascript "%s"' % (APP, w, lit),
@@ -318,6 +427,23 @@ STUB = r'''const h=document.getElementById('__gtfile');const op=window.showOpenF
 const done=()=>{window.showOpenFilePicker=op;HTMLInputElement.prototype.click=ck;h.remove()};
 window.showOpenFilePicker=async()=>{const f=h.files[0];done();return [{kind:'file',name:f.name,getFile:async()=>f,queryPermission:async()=>'granted',requestPermission:async()=>'granted',isSameEntry:async()=>false}]};
 HTMLInputElement.prototype.click=function(){if(this.type!='file')return ck.call(this);this.files=h.files;done();this.dispatchEvent(new Event('input',{bubbles:true}));this.dispatchEvent(new Event('change',{bubbles:true}))};return 'ok' '''
+
+
+SECRET_DIRS = ('.ssh', '.aws', '.gnupg', '.config', '.kube', '.docker', '.azure', '.gcloud', '.netrc', 'Library', '.ghosttab', '.claude')
+SECRET_FILES = re.compile(r'(^\.env|^id_(rsa|ed25519|ecdsa|dsa)|\.(pem|key|p12|pfx|kdbx|keychain(-db)?|ovpn)$|^credentials|^\.?(bash|zsh)_history$|^\.(npmrc|pypirc|git-credentials)$)', re.I)
+
+
+def safe_path(p):
+    """Uploads are a data-exfiltration path if an agent gets prompt-injected: block secrets, optionally confine to B_UPLOAD_DIRS."""
+    path = os.path.realpath(os.path.expanduser(p))
+    home = os.path.realpath(os.path.expanduser('~'))
+    rel = os.path.relpath(path, home).split(os.sep) if path.startswith(home + os.sep) else []
+    if (rel and (rel[0] in SECRET_DIRS or any(x.startswith('.') for x in rel[:-1]))) or SECRET_FILES.search(os.path.basename(path)):
+        sys.exit('refused: %s looks like a secret or config file. GhostTab never uploads keys, .env, dotfolders or ~/Library' % path)
+    allow = [os.path.realpath(os.path.expanduser(d)) for d in os.environ.get('B_UPLOAD_DIRS', '').split(':') if d]
+    if allow and not any(path == d or path.startswith(d + os.sep) for d in allow):
+        sys.exit('refused: %s is outside B_UPLOAD_DIRS (%s)' % (path, ':'.join(allow)))
+    return path
 
 
 def send_file(path):
@@ -413,6 +539,11 @@ var b=w.objectForKey("kCGWindowBounds");o.push([w.objectForKey("kCGWindowNumber"
 
 
 def capture():
+    if xbg():
+        import base64
+        path = '/tmp/b-shot-raw.png'
+        open(path, 'wb').write(base64.b64decode(ext('shot', timeout=20)))
+        return path, None
     if bgwin():
         sys.exit('ocr/shot need a visible window; the bg window is minimized. Use text/el, or b bg off for ocr')
     n, x, y, w, h = cg_window()
@@ -427,16 +558,19 @@ def no_bg(cmd):
 
 
 def point(q, final=False):
-    no_bg('real input')
-    front_check()
-    out = target(q, (FINAL + ';return JSON.stringify(pos(e))+" |FIN| "+FIN' if final else 'return JSON.stringify(pos(e))'), real=True, **FLAGS)
+    if not xbg():
+        no_bg('real input')
+        front_check()
+    P = ('const vp=()=>{%s};' % VPOS, 'vp()') if xbg() else ('', 'JSON.stringify(pos(e))')
+    out = target(q, P[0] + (FINAL + ';return ' + P[1] + '+" |FIN| "+FIN' if final else 'return ' + P[1]), real=True, **FLAGS)
     if final and ' |FIN| ' in out:
         out, info = out.split(' |FIN| ', 1)
         PENDING[0] = info
     if not out.startswith('['):
         sys.exit(out)
-    osa('front')
-    time.sleep(0.3)
+    if not xbg():
+        osa('front')
+        time.sleep(0.3)
     return json.loads(out)
 
 
@@ -520,7 +654,7 @@ def bg_nav(c, arg, retry=True):
         time.sleep(0.25)
     if st != 'old':
         print('ok')
-    elif url and retry and js('location.href') != url:
+    elif url and retry and not xbg() and js('location.href') != url:
         # navigation ignored (tab wedged): replace the hidden window and try once more
         osa('closewin')
         os.remove(BGFILE)
@@ -705,6 +839,30 @@ if(!b.length)return 'NOBUTTON';b[0].click();return lab(b[0])""")
     print('gave up after 10 pages (b form)')
 
 
+def ext_cmd(m):
+    if m == 'install':
+        xid = open(os.path.join(HERE, 'ext', 'ID')).read().strip()
+        for name, d in (('chrome', '~/Library/Application Support/Google/Chrome'), ('brave', '~/Library/Application Support/BraveSoftware/Brave-Browser')):
+            d = os.path.expanduser(d)
+            if not os.path.isdir(d):
+                continue
+            sh = os.path.join(HERE, 'host-%s.sh' % name)
+            open(sh, 'w').write('#!/bin/sh\nexec /usr/bin/python3 "%s" %s "$@"\n' % (os.path.join(HERE, 'host.py'), name))
+            os.chmod(sh, 0o755)
+            os.makedirs(os.path.join(d, 'NativeMessagingHosts'), exist_ok=True)
+            json.dump({'name': 'com.ghosttab.bridge', 'description': 'GhostTab bridge', 'path': sh, 'type': 'stdio',
+                       'allowed_origins': ['chrome-extension://%s/' % xid]},
+                      open(os.path.join(d, 'NativeMessagingHosts', 'com.ghosttab.bridge.json'), 'w'), indent=1)
+            print('%s: native host registered' % name)
+        print('Now in each browser: open chrome://extensions (brave://extensions), turn on Developer mode, Load unpacked -> %s\n'
+              'Then: b ext status, b bg close, b bg on' % os.path.join(HERE, 'ext'))
+        return
+    try:
+        print('extension connected (%s)' % ext('ping', timeout=3))
+    except (ExtDown, RuntimeError) as e:
+        print('extension not connected: %s' % (e or 'no socket at ' + SOCK))
+
+
 def js_until(cond, sec):
     end = time.time() + sec
     while time.time() < end:
@@ -876,16 +1034,25 @@ if(e.form&&e.form.requestSubmit)e.form.requestSubmit();return "enter pressed"'''
         print(out)
     elif c == 'rclick':
         x, y = point(a[1], final=True)
-        real_click(x, y, int(a[2]) if len(a) > 2 else 1)
+        (x_click if xbg() else real_click)(x, y, int(a[2]) if len(a) > 2 else 1)
         fin_log(' |FIN| ' + PENDING[0] if PENDING[0] else '')
         print('real click at %d,%d' % (x, y))
     elif c == 'type':
         x, y = point(a[1])
-        real_click(x, y)
-        time.sleep(0.2)
-        key('cmd+a')
-        paste(a[2])
+        if xbg():
+            x_click(x, y)
+            x_key('cmd+a')
+            ext('type', text=a[2])
+        else:
+            real_click(x, y)
+            time.sleep(0.2)
+            key('cmd+a')
+            paste(a[2])
         print('typed %d chars' % len(a[2]))
+    elif c == 'key' and xbg():
+        for combo in a[1:]:
+            x_key(combo)
+        print('keys sent')
     elif c == 'key':
         no_bg('key')
         front_check()
@@ -919,10 +1086,13 @@ const b=D.filter(e=>isBoxy(e)&&on(e).toLowerCase().includes(n))[0];if(b){const l
 const t=D.filter(e=>!e.children.length&&T(e.innerText).toLowerCase().includes(n))[0];if(!t)return 'no saved file named "'+N+'" here (not at the resume/file step?) and no local file '+N;
 const c=t.closest('label,button,[role=radio],[role=button],[role=option],li,[tabindex]')||t;c.click();return 'clicked '+T(c.innerText).slice(0,60)''', N=a[1]))
                 return
-        path = os.path.abspath(os.path.expanduser(a[2]))
+        path = safe_path(a[2])
         if not os.path.exists(path):
             sys.exit('no such file: ' + path)
         t0 = time.time()
+        if c == 'upload' and xbg():
+            print('%s in %.1fs' % (x_upload('' if a[1] == '-' else a[1], path), time.time() - t0))
+            return
         name, mime = send_file(path)
         mk = 'const file=new File(window.__up,%s,{type:%s});window.__up=null;const dt=new DataTransfer();dt.items.add(file);' % (name, mime)
         if c == 'upload':
@@ -934,10 +1104,13 @@ return "attached "+file.name+" ("+(file.size/1048576).toFixed(1)+" MB)"'''
         q = a[1] if c == 'drop' or a[1] != '-' else ''
         out = target(q, body, STUB=STUB) if q else page('let e=null;' + body, STUB=STUB)
         print('%s in %.1fs' % (out, time.time() - t0))
+    elif c == 'rupload' and xbg():
+        path = safe_path(a[2])
+        print(x_upload(a[1], path) if os.path.exists(path) else 'no such file: ' + path)
     elif c == 'rupload':
         no_bg('rupload')
         front_check()
-        path = os.path.abspath(os.path.expanduser(a[2]))
+        path = safe_path(a[2])
         if not os.path.exists(path):
             sys.exit('no such file: ' + path)
         x, y = point(a[1])
@@ -978,17 +1151,22 @@ return window.__cxlog.slice(-30).join("\\n")||"no logs yet"})()'''))
         print(user_js(a[1]))
     elif c == 'li':
         li(a)
+    elif c == 'ext':
+        ext_cmd(a[1] if len(a) > 1 else 'status')
     elif c == 'shot':
         path, _ = capture()
         subprocess.run(['sips', '-Z', '1200', path, '--out', '/tmp/b-shot.png'], capture_output=True)
         print('/tmp/b-shot.png')
     elif c == 'ocr':
-        path, (x, y, w, h) = capture()
+        path, box = capture()
         geo = json.loads(js('JSON.stringify([outerWidth,outerHeight,innerWidth,innerHeight,devicePixelRatio])'))
         ow, oh, iw, ih, dpr = geo
         sc = float(backing())
         z = dpr / sc
         ox, oy = (ow - iw * z) / 2, oh - ih * z
+        if box is None:
+            # CDP screenshot: viewport only, in device pixels
+            sc, z, ox, oy = dpr, 1, 0, 0
         flt = ' '.join(a[1:]).lower()
         lines = subprocess.run([os.path.join(HERE, 'ocr'), path], capture_output=True, text=True).stdout.splitlines()
         for ln in lines:
@@ -1003,6 +1181,9 @@ return window.__cxlog.slice(-30).join("\\n")||"no logs yet"})()'''))
         print(settle(js('''(()=>{const e=document.elementFromPoint(%f,%f);if(!e)return "nothing there";%s
 ["pointerdown","mousedown","pointerup","mouseup"].forEach(t=>e.dispatchEvent(new MouseEvent(t,{bubbles:true,clientX:%f,clientY:%f})));e.click();
 return "clicked: "+(e.innerText||e.getAttribute("aria-label")||e.tagName).replace(/\\s+/g," ").trim().slice(0,60)})()''' % (X, Y, SIG, X, Y))))
+    elif c == 'rclickat' and xbg():
+        x_click(float(a[1]), float(a[2]))
+        print('real click done')
     elif c == 'rclickat':
         no_bg('rclickat')
         front_check()
@@ -1019,7 +1200,19 @@ return "clicked: "+(e.innerText||e.getAttribute("aria-label")||e.tagName).replac
             if bgwin():
                 print('bg already on (window %s)' % bgwin())
                 return
+            if not os.environ.get('B_NOEXT') and os.path.exists(SOCK):
+                try:
+                    ext('ping', timeout=3)
+                    open(BGFILE, 'w').write('ext')
+                    if os.path.exists(BGFILE + '.parked') and open(BGFILE + '.parked').read().strip() == 'ext':
+                        os.remove(BGFILE + '.parked')
+                    print('bg on: extension hidden tab (real clicks, keys and uploads work in bg)')
+                    return
+                except (ExtDown, RuntimeError):
+                    pass
             parked = BGFILE + '.parked'
+            if os.path.exists(parked) and open(parked).read().strip() == 'ext':
+                os.remove(parked)
             if os.path.exists(parked):
                 wid = open(parked).read().strip()
                 if osa('exists', wid=wid) == 'yes':
@@ -1040,11 +1233,15 @@ return "clicked: "+(e.innerText||e.getAttribute("aria-label")||e.tagName).replac
         elif m == 'close':
             for f in (BGFILE, BGFILE + '.parked'):
                 if os.path.exists(f):
-                    osa('closewin', wid=open(f).read().strip())
+                    w = open(f).read().strip()
+                    try:
+                        ext('closeghost') if w == 'ext' else osa('closewin', wid=w)
+                    except (ExtDown, RuntimeError):
+                        pass
                     os.remove(f)
             print('hidden window closed')
         else:
-            print('bg on (window %s)' % bgwin() if bgwin() else 'bg off')
+            print(('bg on (extension hidden tab)' if xbg() else 'bg on (window %s)' % bgwin()) if bgwin() else 'bg off')
     else:
         sys.exit('unknown command ' + c + '\n' + USAGE)
 
