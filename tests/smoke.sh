@@ -35,4 +35,7 @@ ok "$(b c Submit --final)" "clicked" status-intro-text
 b go 'data:text/html,<div role=dialog id=d style="width:300px;height:200px"><h2>Apply</h2><input id=dt placeholder=Date onclick="cal.hidden=false" onfocus="cal.hidden=false"><div id=cal class=datepicker hidden>calendar</div></div><p id=o></p><script>document.addEventListener("keydown",e=>{if(e.key=="Escape")d.remove()});document.addEventListener("mousedown",e=>{if(!cal.contains(e.target)&&e.target!=dt)cal.hidden=true})</script>' >/dev/null
 b c Date >/dev/null
 ok "$(b key esc; b js 'document.getElementById("d")?(cal.hidden?"kept-closed":"kept-open"):"gone"')" "kept-closed" esc-popup-in-dialog
+b go 'data:text/html,<div role=dialog style="width:400px;height:300px"><h3>Review your application</h3><div><input type=file id=f1 hidden><label for=f1>Upload cover letter</label><input type=file id=f2 hidden><label for=f2>Upload resume</label></div><div><input type=radio name=cv id=a><label for=a><span>Old_CV.pdf</span></label></div><div><input type=radio name=cv id=b2 checked><label for=b2><span>Python_CV.pdf</span></label></div><p id=o></p><script>f1.onchange=()=>o.textContent+="cover ";f2.onchange=()=>o.textContent+="resume "</script></div>' >/dev/null
+ok "$(b li review)" "CV: Python_CV.pdf$" li-review-selected-cv
+ok "$(b up 'Upload resume' "$T/a.txt" >/dev/null; b js 'o.textContent')" "^resume $" upload-label-for
 rm -rf "$T"; exit ${FAIL:-0}

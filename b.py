@@ -366,6 +366,7 @@ def x_key(combo):
 
 # find the file input for a target (or the page); else return the target's centre for a trusted click
 XFILE = r'''let f=e&&e.tagName=='INPUT'&&e.type=='file'?e:null;
+if(!f&&e&&e.htmlFor){const l=document.getElementById(e.htmlFor);if(l&&l.type=='file')f=l}
 if(!f&&e){f=e.querySelector('input[type=file]');const c=e.closest('form,section,[role=dialog],div');if(!f&&c)f=c.querySelector('input[type=file]')}
 if(!f&&!e)f=deep(scope()||document,0,0,[]).map(x=>x[0]).find(x=>x.tagName=='INPUT'&&x.type=='file');
 window.__gtEl=f||null;if(f)return 'INPUT';if(!e)return 'NONE';e.scrollIntoView({block:'center'});const r=e.getBoundingClientRect();return JSON.stringify([r.x+r.width/2,r.y+r.height/2])'''
@@ -439,6 +440,7 @@ def js_big(code):
 
 # file input near the target; if none, stub showOpenFilePicker (LinkedIn etc.) and click the target
 FILE_TARGET = r'''let f=e&&e.tagName=='INPUT'&&e.type=='file'?e:null;
+if(!f&&e&&e.htmlFor){const l=document.getElementById(e.htmlFor);if(l&&l.type=='file')f=l}
 if(!f&&e){f=e.querySelector('input[type=file]');const c=e.closest('form,section,[role=dialog],div');if(!f&&c)f=c.querySelector('input[type=file]')}
 if(!f&&!e){const all=deep(scope()||document,0,0,[]).map(x=>x[0]).filter(x=>x.tagName=='INPUT'&&x.type=='file');f=all[0]}
 if(!f){let h=document.getElementById('__gtfile');if(!h){h=document.createElement('input');h.type='file';h.id='__gtfile';h.style.display='none';document.documentElement.appendChild(h)}h.files=dt.files;
@@ -765,7 +767,7 @@ const btn=[...R?R.querySelectorAll('button'):[]].filter(b=>vis(b)&&!b.disabled);
 const nx=btn.find(b=>b.matches(NX))||btn.find(b=>/^(next|review|continue)$/i.test(T(b.innerText))||/next step|review your application/i.test(b.getAttribute('aria-label')||''));
 document.querySelectorAll('[data-gtnext]').forEach(x=>x.removeAttribute('data-gtnext'));if(nx)nx.setAttribute('data-gtnext','1');
 const sub=btn.find(b=>b.matches('[data-live-test-easy-apply-submit-button],[data-easy-apply-submit-button]')||/submit application/i.test(T(b.innerText)+' '+(b.getAttribute('aria-label')||'')));
-const err=R?[...R.querySelectorAll('[role=alert],.artdeco-inline-feedback--error,[class*=error]')].map(x=>T(x.innerText)).filter(Boolean).slice(0,5):[];
+const err=R?[...new Set([...R.querySelectorAll('[role=alert],.artdeco-inline-feedback--error,[class*=error],[aria-invalid=true]')].map(x=>{if(x.matches('[aria-invalid=true]')){const d=(x.getAttribute('aria-describedby')||'').split(' ').map(i=>i&&document.getElementById(i)).filter(Boolean).map(y=>T(y.innerText)).join(' ');return (lab(x)||'field')+': '+(d||'invalid')}return T(x.innerText)}).filter(Boolean))].slice(0,5):[];
 const fl=it.filter(f=>f.k!='button');const fn=/\.(pdf|docx?)\b/i;
 const qf=fl.filter(f=>{if(f.k=='file')return false;if(f.k=='radio'||f.k=='checkbox')return !fn.test(f.o)&&!fn.test(f.q);
 if(f.k=='select')return !/^\d+ options$/.test(f.o)&&!/@/.test(f.v);if(f.k=='textarea')return true;
@@ -776,13 +778,16 @@ if(cl)cl.setAttribute('data-gtcont','1');return JSON.stringify({limit:/easy appl
 review:!!sub||/^(100|(\d+)\/\2)$/.test(pr)||/review your application/i.test(t),resume:/upload resume|^resume$/im.test(t)||[...R?R.querySelectorAll('*'):[]].some(x=>!x.children.length&&/\.(pdf|docx?)\b/i.test(x.textContent||'')),sig:dsig(R),err})"""
 
 LIREVIEW = r"""const R=scope();if(!R)return 'no Easy Apply dialog open';window.__gtForm=dsig(R);const fn=/\.(pdf|docx?)\b/i;
-const cv=[...new Set([...R.querySelectorAll('*')].filter(x=>!x.children.length&&fn.test(x.textContent||'')).map(x=>T(x.textContent)))];
+const cvs=[...R.querySelectorAll('*')].filter(x=>!x.children.length&&fn.test(x.textContent||''));
+const picked=x=>{for(let c=x,i=0;c&&c!==R&&i<6;c=c.parentElement,i++){if(/selected/i.test(c.className||'')||c.getAttribute('aria-checked')=='true'||c.getAttribute('aria-selected')=='true')return true;
+const b=c.querySelector('input[type=radio],input[type=checkbox]');if(b)return b.checked}return false};
+const sel=cvs.filter(picked);const cv=[...new Set((sel.length?sel:cvs).map(x=>T(x.textContent)))];
 const txt=x=>T(x.innerText||'');const ok=x=>txt(x)&&txt(x).length<300&&!x.querySelector('button,input,select,textarea');
 const pairs=[...R.querySelectorAll('*')].filter(x=>{const c=[...x.children].filter(y=>txt(y));return c.length==2&&c.every(ok)&&!c.some(y=>y.matches('button,a,[role=button]'))&&!c[0].matches('h1,h2,h3,h4')&&!/^(button|a|label)$/i.test(x.tagName)});
 const inner=pairs.filter(x=>!pairs.some(y=>y!==x&&x.contains(y)));const seen=new Set(),out=[];
 const contact=a=>/@|^\+?[\d\s()-]{7,}$|\(\+\d+\)/.test(a)||fn.test(a);
 inner.forEach(x=>{const [q,a]=[...x.children].filter(y=>txt(y)).map(txt);if(contact(a)||contact(q)||seen.has(q))return;seen.add(q);out.push(q.slice(0,90)+' → '+a.slice(0,80))});
-return 'CV: '+(cv.join(', ')||'none shown')+'\n'+(out.slice(0,60).join('\n')||'(no Q→A pairs found; b t 1500)')"""
+return 'CV: '+(cv.join(', ')||'none shown')+(!sel.length&&cv.length>1?' (could not tell which is selected)':'')+'\n'+(out.slice(0,60).join('\n')||'(no Q→A pairs found; b t 1500)')"""
 
 
 def li(a):
@@ -867,12 +872,21 @@ if(!b.length)return 'NOBUTTON';b[0].click();return lab(b[0])""")
         if s['resume'] and cv and not picked:
             picked = True
             sys.stdout.write('CV: ')
-            main(['upload', cv])
             if os.path.isfile(os.path.expanduser(cv)):
                 stem = os.path.splitext(os.path.basename(cv))[0]
-                js_until('(document.querySelector("[role=dialog]")||document.body).innerText.includes(%s)' % json.dumps(stem), 10)
+                cnt = '[...(document.querySelector("[role=dialog]")||document.body).querySelectorAll("*")].filter(x=>!x.children.length&&(x.textContent||"").includes(%s)).length' % json.dumps(stem)
+                n0 = js(cnt, soft=True)
+                try:
+                    main(['upload', 'Upload resume', cv])
+                except SystemExit as e:
+                    print('(%s; using the first file input)' % e)
+                    main(['upload', '-', cv])
+                if not js_until('%s>%d' % (cnt, int(n0) if n0.isdigit() else 0), 10):
+                    print('(%s did not appear in the saved CV list)' % stem)
                 sys.stdout.write('CV select: ')
                 main(['upload', stem])
+            else:
+                main(['upload', cv])
             time.sleep(1)
             continue
         plain = s['kind'] != 'questions'
@@ -943,6 +957,7 @@ if(e.tagName=='CANVAS')return e.toDataURL('image/png');return e.currentSrc||e.sr
     return 'saved %s (%d KB)' % (out, len(data) // 1024)
 
 
+GPT_BOX = '#prompt-textarea,[contenteditable=true][aria-label="Ask ChatGPT"],main form [contenteditable=true]'
 GPT_IMGS = 'JSON.stringify([...document.querySelectorAll("main img")].filter(i=>i.naturalWidth>=256&&/generated|image/i.test(i.alt||"image")).map(i=>i.currentSrc||i.src))'
 
 
@@ -952,11 +967,11 @@ def gpt(a):
         sys.exit('usage: b gpt image @prompt.txt|"prompt" OUT.png')
     prompt = open(os.path.expanduser(a[2][1:])).read().strip() if a[2].startswith('@') else a[2]
     main(['go', 'https://chatgpt.com/'])
-    if not js_until('document.querySelector("#prompt-textarea")', 25):
+    if not js_until('document.querySelector(%s)' % json.dumps(GPT_BOX), 25):
         sys.exit('ChatGPT composer not found (logged out? b t 400)')
     before = set(json.loads(js(GPT_IMGS)))
-    print(page(r"""const e=document.querySelector('#prompt-textarea');e.focus();document.execCommand('selectAll');const L=V.split('\n');
-L.forEach((l,i)=>{if(l)document.execCommand('insertText',false,l);if(i<L.length-1)document.execCommand('insertParagraph')});return 'prompt: '+V.length+' chars'""", V=prompt))
+    print(page(r"""const e=document.querySelector(BOX);e.focus();document.execCommand('selectAll');const L=V.split('\n');
+L.forEach((l,i)=>{if(l)document.execCommand('insertText',false,l);if(i<L.length-1)document.execCommand('insertParagraph')});return 'prompt: '+V.length+' chars'""", V=prompt, BOX=GPT_BOX))
     if not js_until('(b=>b&&!b.disabled)(document.querySelector("[data-testid=send-button],#composer-submit-button"))', 15):
         sys.exit('send button never enabled')
     js('document.querySelector("[data-testid=send-button],#composer-submit-button").click();1')
