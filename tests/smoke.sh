@@ -32,4 +32,7 @@ b go 'data:text/html,<input id=t placeholder=Tags><p id=o></p><script>t.onkeydow
 ok "$(b tags Tags 'ai, python,go' >/dev/null; b x 0 100)" "\[ai\]\[python\]\[go\]" tags
 b go 'data:text/html,<p>You applied for one seat only per family.</p><form><input name=a placeholder=Name></form><button onclick="o.textContent=`sent`">Submit</button><p id=o></p>' >/dev/null
 ok "$(b c Submit --final)" "clicked" status-intro-text
+b go 'data:text/html,<div role=dialog id=d style="width:300px;height:200px"><h2>Apply</h2><input id=dt placeholder=Date onclick="cal.hidden=false" onfocus="cal.hidden=false"><div id=cal class=datepicker hidden>calendar</div></div><p id=o></p><script>document.addEventListener("keydown",e=>{if(e.key=="Escape")d.remove()});document.addEventListener("mousedown",e=>{if(!cal.contains(e.target)&&e.target!=dt)cal.hidden=true})</script>' >/dev/null
+b c Date >/dev/null
+ok "$(b key esc; b js 'document.getElementById("d")?(cal.hidden?"kept-closed":"kept-open"):"gone"')" "kept-closed" esc-popup-in-dialog
 rm -rf "$T"; exit ${FAIL:-0}

@@ -339,6 +339,13 @@ XKEYS = {'enter': ('Enter', 13, '\r'), 'return': ('Enter', 13, '\r'), 'tab': ('T
          'pageup': ('PageUp', 33, ''), 'pagedown': ('PageDown', 34, ''), 'home': ('Home', 36, ''), 'end': ('End', 35, '')}
 
 
+# Esc inside a modal with an open picker/listbox closes the whole modal on many sites: close just the popup
+ESC_POPUP = r'''(()=>{const V=x=>x.getClientRects().length>0;const d=[...document.querySelectorAll('[role=dialog],dialog[open]')].filter(V).pop();if(!d)return '';
+const a=document.activeElement,p=[...d.querySelectorAll('[aria-expanded=true],[role=listbox],[role=grid],[class*=datepicker],[class*=calendar]')].filter(V)[0];
+if(!p&&!(a&&d.contains(a)&&a.type=='date'))return '';if(a&&d.contains(a))a.blur();const h=d.querySelector('h1,h2,h3')||d;
+['pointerdown','mousedown','mouseup','click'].forEach(t=>h.dispatchEvent(new MouseEvent(t,{bubbles:true})));return 'popup'})()'''
+
+
 def x_key(combo):
     parts = combo.lower().split('+')
     k = parts[-1]
@@ -719,7 +726,7 @@ USAGE = '''commands:
  until 'JS' [sec] | until url~PART [sec] | until text TEXT [sec] | until gone TEXT [sec]
  fill N|LABEL @file  fill from a file; newlines become paragraphs in rich editors (LinkedIn, Gmail...)
  li jobs QUERY [PLACE|geo=ID] [days=30] [all] [any]   Easy Apply jobs (any = all jobs; all = show Applied too)
- li job ID | li apply ID [CVNAME] | li review      job summary / start Easy Apply to the questions / compact review
+ li job ID | li apply ID [CVNAME|/path/cv.pdf] | li review      job summary / start Easy Apply to the questions / compact review
  close mine          close the tabs b opened in your window (front mode)
  save N|TEXT|URL OUT download an image/link/canvas (with your login) to a file
  gpt image @prompt.txt OUT.png   ChatGPT: send prompt, wait, save the generated image full size
@@ -829,7 +836,7 @@ if(!b.length)return 'NOBUTTON';b[0].click();return lab(b[0])""")
         print({'ALREADY': 'already applied to %s' % jid, 'NOBUTTON': 'no Easy Apply / Continue button on %s' % jid}[st])
         return
     if st.lower().startswith('continue'):
-        print('(resumed a draft: LinkedIn drops uploaded cover letters on drafts, re-upload if one is needed)')
+        print('(resumed a draft: LinkedIn drops uploaded files and some screening answers on drafts; recheck each page)')
     js_until('(()=>{%s;return scope()})()' % DEEP.replace('BACKING', '2'), 10)
     picked, last, retried = False, '', False
     for _ in range(10):
@@ -861,6 +868,11 @@ if(!b.length)return 'NOBUTTON';b[0].click();return lab(b[0])""")
             picked = True
             sys.stdout.write('CV: ')
             main(['upload', cv])
+            if os.path.isfile(os.path.expanduser(cv)):
+                stem = os.path.splitext(os.path.basename(cv))[0]
+                js_until('(document.querySelector("[role=dialog]")||document.body).innerText.includes(%s)' % json.dumps(stem), 10)
+                sys.stdout.write('CV select: ')
+                main(['upload', stem])
             time.sleep(1)
             continue
         plain = s['kind'] != 'questions'
@@ -1366,6 +1378,9 @@ if(e.form&&e.form.requestSubmit)e.form.requestSubmit();return "enter pressed"'''
         if not xbg():
             front_check()
         for combo in a[1:]:
+            if combo.lower() in ('esc', 'escape') and js(ESC_POPUP) == 'popup':
+                print('closed the popup inside the dialog instead of Esc (Esc would close the dialog)')
+                continue
             x_key(combo)
         print('keys sent')
     elif c == 'key':
