@@ -708,7 +708,7 @@ USAGE = '''commands:
  form                one-call dump of the open dialog/form: kind, label, required*, value, options
  fillform @answers.json   fill a whole page {label: value}; radios, selects, comboboxes, files
  click N|TEXT        js click            rclick N|TEXT [2]   real mouse click (double with 2)
- fill N|LABEL VALUE  set value           type N|LABEL VALUE  real keyboard (focus + paste)
+ fill N|LABEL VALUE  set value           type [N|LABEL] VALUE  real keyboard (no target = focused element)
  tags N|LABEL a,b,c  tag/chip inputs: types each tag + Enter (dev.to, Medium)
  select N|LABEL OPT | check N|LABEL [on|off] | hover N|TEXT | enter N|LABEL
  pick N|LABEL TEXT   choose in a react-select combobox (Greenhouse/Lever/Ashby), bg-safe
@@ -1366,6 +1366,12 @@ if(e.form&&e.form.requestSubmit)e.form.requestSubmit();return "enter pressed"'''
         (x_click if xin() else real_click)(x, y, int(a[2]) if len(a) > 2 else 1)
         fin_log(' |FIN| ' + PENDING[0] if PENDING[0] else '')
         print('real click at %d,%d' % (x, y))
+    elif c == 'type' and len(a) == 2:
+        # no target: insert into whatever has focus (after b c / b js focus())
+        if not xin():
+            sys.exit('b type TEXT (focused element) needs the GhostTab extension; else use b type N|LABEL TEXT')
+        ext('type', text=a[1])
+        print('typed %d chars into the focused element' % len(a[1]))
     elif c == 'type':
         x, y = point(a[1])
         if xin():

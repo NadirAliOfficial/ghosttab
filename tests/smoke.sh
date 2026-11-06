@@ -43,4 +43,7 @@ b c Login >/dev/null; sleep 1.5
 ok "$(b tabs | tr "\n" " ")" "popup .*active: 2" popup-adopted
 b js 'window.close();1' >/dev/null; sleep 1.5
 ok "$(b tabs)" "active: 1" popup-closed-returns
+b go 'data:text/html,<input id=q placeholder=Q><p id=o></p>' >/dev/null
+b js 'q.focus();1' >/dev/null
+ok "$(b type hello >/dev/null; b js 'q.value')" "^hello$" type-focused
 rm -rf "$T"; exit ${FAIL:-0}
