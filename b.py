@@ -958,6 +958,8 @@ if(e.tagName=='CANVAS')return e.toDataURL('image/png');return e.currentSrc||e.sr
 
 
 GPT_BOX = '#prompt-textarea,[contenteditable=true][aria-label="Ask ChatGPT"],main form [contenteditable=true]'
+GPT_SEND = '[data-testid=send-button],#composer-submit-button,button[aria-label=Send]'
+GPT_BUSY = '!!document.querySelector("[data-testid=stop-button],button[aria-label^=Stop]")||/(^|\\n)Preview\\n/.test((document.querySelector("main")||document.body).innerText)'
 GPT_IMGS = 'JSON.stringify([...document.querySelectorAll("main img")].filter(i=>i.naturalWidth>=256&&/generated|image/i.test(i.alt||"image")).map(i=>i.currentSrc||i.src))'
 
 
@@ -972,16 +974,16 @@ def gpt(a):
     before = set(json.loads(js(GPT_IMGS)))
     print(page(r"""const e=document.querySelector(BOX);e.focus();document.execCommand('selectAll');const L=V.split('\n');
 L.forEach((l,i)=>{if(l)document.execCommand('insertText',false,l);if(i<L.length-1)document.execCommand('insertParagraph')});return 'prompt: '+V.length+' chars'""", V=prompt, BOX=GPT_BOX))
-    if not js_until('(b=>b&&!b.disabled)(document.querySelector("[data-testid=send-button],#composer-submit-button"))', 15):
+    if not js_until('(b=>b&&!b.disabled)(document.querySelector(%s))' % json.dumps(GPT_SEND), 15):
         sys.exit('send button never enabled')
-    js('document.querySelector("[data-testid=send-button],#composer-submit-button").click();1')
+    js('document.querySelector(%s).click();1' % json.dumps(GPT_SEND))
     t0 = time.time()
-    js_until('document.querySelector("[data-testid=stop-button]")', 20)
+    js_until(GPT_BUSY, 20)
     new = []
     while time.time() - t0 < 300:
         time.sleep(3)
         pump()
-        busy = js('!!document.querySelector("[data-testid=stop-button]")') == 'true'
+        busy = js(GPT_BUSY) == 'true'
         new = [u for u in json.loads(js(GPT_IMGS)) if u not in before]
         if new and not busy:
             break
@@ -989,7 +991,7 @@ L.forEach((l,i)=>{if(l)document.execCommand('insertText',false,l);if(i<L.length-
         sys.exit('no image after %ds; last reply: %s' % (time.time() - t0, js('(()=>{const m=[...document.querySelectorAll("[data-message-author-role=assistant]")].pop();return m?m.innerText.slice(0,300):"none"})()')))
     time.sleep(2)
     new = [u for u in json.loads(js(GPT_IMGS)) if u not in before] or new
-    print('%s after %ds' % (save(new[-1], a[3]), time.time() - t0))
+    print('%s after %ds%s' % (save(new[0], a[3]), time.time() - t0, ' (A/B compare: saved image 1)' if len(new) > 1 else ''))
 
 
 YT_THREAD = r"""const t=[...document.querySelectorAll('ytd-comment-thread-renderer')];const m=t.find(x=>[...x.querySelectorAll('a[href*="lc="]')].some(a=>a.href.includes('lc='+C)))||t.find(x=>/highlighted/i.test(x.innerText));"""
