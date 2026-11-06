@@ -38,4 +38,9 @@ ok "$(b key esc; b js 'document.getElementById("d")?(cal.hidden?"kept-closed":"k
 b go 'data:text/html,<div role=dialog style="width:400px;height:300px"><h3>Review your application</h3><div><input type=file id=f1 hidden><label for=f1>Upload cover letter</label><input type=file id=f2 hidden><label for=f2>Upload resume</label></div><div><input type=radio name=cv id=a><label for=a><span>Old_CV.pdf</span></label></div><div><input type=radio name=cv id=b2 checked><label for=b2><span>Python_CV.pdf</span></label></div><p id=o></p><script>f1.onchange=()=>o.textContent+="cover ";f2.onchange=()=>o.textContent+="resume "</script></div>' >/dev/null
 ok "$(b li review)" "CV: Python_CV.pdf$" li-review-selected-cv
 ok "$(b up 'Upload resume' "$T/a.txt" >/dev/null; b js 'o.textContent')" "^resume $" upload-label-for
+b go 'data:text/html,<title>main</title><button id=l>Login</button><script>l.onclick=()=>{const w=window.open("about:blank","p","width=400,height=400");w.document.write("<title>popup</title>")}</script>' >/dev/null
+b c Login >/dev/null; sleep 1.5
+ok "$(b tabs | tr "\n" " ")" "popup .*active: 2" popup-adopted
+b js 'window.close();1' >/dev/null; sleep 1.5
+ok "$(b tabs)" "active: 1" popup-closed-returns
 rm -rf "$T"; exit ${FAIL:-0}

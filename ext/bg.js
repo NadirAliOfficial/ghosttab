@@ -35,6 +35,27 @@ chrome.debugger.onEvent.addListener(async (s, m, p) => {
   cdp(s.tabId, 'Page.setInterceptFileChooserDialog', {enabled: false}).catch(() => {});
 });
 
+// popups an agent tab opens (OAuth logins): minimize at once and make them the session's current tab until they close
+chrome.tabs.onCreated.addListener(async t => {
+  if (!t.openerTabId) return;
+  const w = await chrome.windows.get(t.windowId).catch(() => null);
+  if (!w || w.type !== 'popup') return;
+  const all = await chrome.storage.local.get(null);
+  const k = Object.keys(all).find(k => k.startsWith('gt:') && (all[k] || []).includes(t.openerTabId));
+  if (!k) return;
+  chrome.windows.update(w.id, {state: 'minimized', focused: false}).catch(() => {});
+  const s = k.slice(3);
+  await chrome.storage.local.set({[k]: [...all[k], t.id], ['gprev:' + s]: all['gcur:' + s], ['gcur:' + s]: t.id});
+});
+chrome.tabs.onRemoved.addListener(async id => {
+  const all = await chrome.storage.local.get(null);
+  for (const k of Object.keys(all)) {
+    if (!k.startsWith('gcur:') || all[k] !== id) continue;
+    const p = all['gprev:' + k.slice(5)];
+    if (p) await chrome.storage.local.set({[k]: p});
+  }
+});
+
 // place 'tab': agent tabs sit in the user's own window, never activated, in a "GhostTab" group (he can watch them)
 // place 'win': one minimized window (old behaviour)
 async function place() { return (await chrome.storage.local.get('place')).place || 'tab'; }
