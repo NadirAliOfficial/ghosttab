@@ -725,6 +725,7 @@ USAGE = '''commands:
  ocr [FILTER]        read the window's pixels as text on-device (no image tokens) -> "x,y text" page coords
  clickat X Y         click page point (from ocr), works in bg   rclickat X Y  real mouse click there
  bg on [hidden]|off|close|status  agent tab in your window, never active (hidden = minimized window); close removes
+ proxy [US|CA|off]  Chrome-only VPN for the whole browser (per-site: the toolbar button); no arg = status
  until 'JS' [sec] | until url~PART [sec] | until text TEXT [sec] | until gone TEXT [sec]
  fill N|LABEL @file  fill from a file; newlines become paragraphs in rich editors (LinkedIn, Gmail...)
  li jobs QUERY [PLACE|geo=ID] [days=30] [all] [any]   Easy Apply jobs (any = all jobs; all = show Applied too)
@@ -1513,6 +1514,9 @@ return window.__cxlog.slice(-30).join("\\n")||"no logs yet"})()'''))
         yt(a)
     elif c == 'ext':
         ext_cmd(a[1] if len(a) > 1 else 'status')
+    elif c == 'proxy':
+        u = a[1] if len(a) > 1 else ''
+        print(ext('proxy', url=u))
     elif c == 'shot':
         path, _ = capture()
         subprocess.run(['sips', '-Z', '1200', path, '--out', '/tmp/b-shot.png'], capture_output=True)

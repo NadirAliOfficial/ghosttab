@@ -1,3 +1,4 @@
+importScripts('vpn.js');
 // GhostTab bridge: b CLI -> native host (unix socket) -> this worker -> chrome.debugger (CDP)
 const D = {};      // attached tabs: tabId -> {files, timer}
 const IDLE = 20000; // detach after this long without commands (hides the "debugging" bar)
@@ -139,6 +140,7 @@ async function handle(m) {
     await chrome.storage.local.remove(['gw', 'gt', 'gcur', 'gg'].map(k => K(m, k)));
     return 'closed';
   }
+  if (m.op === 'proxy') return vpnSet(m.url);
   if (m.op === 'reload') { setTimeout(() => chrome.runtime.reload(), 100); return 'reloading'; }
   if (m.bg && /^(tabs|newtab|tab|closetab)$/.test(m.op) && await place() === 'tab') {
     await ghost(m);
