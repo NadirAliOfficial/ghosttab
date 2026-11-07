@@ -1,10 +1,9 @@
 {
   "manifest_version": 3,
   "name": "GhostTab",
-  "version": "1.7",
+  "version": "1.6",
   "description": "Lets the b CLI drive tabs with real clicks, keys and file uploads in the background.",
-  "permissions": ["debugger", "tabs", "storage", "nativeMessaging", "tabGroups", "proxy"],
-  "action": {"default_popup": "popup.html", "default_title": "VPN: off"},
+  "permissions": ["debugger", "tabs", "storage", "nativeMessaging", "tabGroups"],
   "background": {"service_worker": "bg.js"},
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAiNKdp4nlASevrpRpn0ZKcUBqTtXGXNjjpFns6gTewntrrgIPY36tDgIsj2ywhtOLheNcDw8CjVvPOhOEVOUVenvVqiK6KEhyfIhffa0rAbIE5FbxUlLqn5WPWROaOVhAWjTrtYvYutHz2iKjuj704PaBEXJkfj0qYNDDqJRCZn7Dp1+RRi86DWm2O6sX67SNIvQfMennQdL+w8nHy52QXaqmVdDSwhU6aN388qoN61Uqb5wE8IlyyilkVcUBDf13NGBDK3jBN1Y0Ic+OcuGtDWF0ICEEGxdSISZFAZyIZaH/qwFvLsiHUJI9O371Q3kn+GT5DW3rM8p5P3d/9C9/MwIDAQAB"
 }
