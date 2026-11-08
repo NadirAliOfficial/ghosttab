@@ -46,4 +46,6 @@ ok "$(b tabs)" "active: 1" popup-closed-returns
 b go 'data:text/html,<input id=q placeholder=Q><p id=o></p>' >/dev/null
 b js 'q.focus();1' >/dev/null
 ok "$(b type hello >/dev/null; b js 'q.value')" "^hello$" type-focused
+b go 'data:text/html,<iframe style="width:400px;height:200px" srcdoc="<input role=combobox aria-label=Proto placeholder=Proto>"></iframe>' >/dev/null
+ok "$(b pick Proto UDP 2>&1)" "^[^E]" pick-in-iframe-no-crash
 rm -rf "$T"; exit ${FAIL:-0}

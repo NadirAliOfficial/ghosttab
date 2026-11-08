@@ -195,7 +195,7 @@ const lo=t.toLowerCase();const o=opts.find(o=>gl(o).toLowerCase()==lo)||opts.fin
 if(o){S.selectOption(o);return "picked: "+gl(o)}return "NOMATCH "+opts.length+" options: "+opts.slice(0,8).map(gl).join(", ")}'''
 
 PICK = r'''let e=cx(Q,true);if(!e)return window.__cxerr||"not found: "+Q;e.setAttribute('data-gtpk','1');
-const r=MW(PKM+';const e=document.querySelector("[data-gtpk]");e.removeAttribute("data-gtpk");const S=rsel(e);if(!S)return "NOSEL";window.__pk=S;'+
+const r=MW(PKM+';const e=document.querySelector("[data-gtpk]");if(!e)return "NOSEL";e.removeAttribute("data-gtpk");const S=rsel(e);if(!S)return "NOSEL";window.__pk=S;'+
 'document.querySelectorAll("[data-gtpki]").forEach(x=>x.removeAttribute("data-gtpki"));S.inputRef&&S.inputRef.setAttribute("data-gtpki","1");return pk('+JSON.stringify(V)+')');
 e.removeAttribute('data-gtpk');if(r!='CSP'&&r!='NOSEL')return r;const i=e.matches('input')?e:ctlOf(e);if(!i||!i.matches('input'))return 'not a combobox; click it, el, then click the option';
 document.querySelectorAll("[data-gtpki]").forEach(x=>x.removeAttribute("data-gtpki"));i.setAttribute('data-gtpki','1');return 'EVENTS' '''
@@ -751,7 +751,7 @@ ALIAS = {'t': 'tail', 'x': 'text', 'e': 'el', 'c': 'click', 'f': 'fill', 'g': 'g
 REST = ('fill', 'type', 'select', 'pick', 'choose', 'hover', 'check')
 
 
-GEO = {'worldwide': 92000000, 'eu': 91000000, 'europe': 91000000, 'cyprus': 106774002, 'poland': 105072130,
+GEO = {'worldwide': 92000000, 'luxembourg': 104042105, 'eu': 91000000, 'europe': 91000000, 'cyprus': 106774002, 'poland': 105072130,
        'uae': 104305776, 'united arab emirates': 104305776, 'dubai': 104305776, 'uk': 101165590, 'united kingdom': 101165590,
        'us': 103644278, 'usa': 103644278, 'united states': 103644278, 'germany': 101282230, 'netherlands': 102890719,
        'ireland': 104738515, 'ie': 104738515, 'nl': 102890719, 'holland': 102890719, 'ksa': 100459316, 'saudi': 100459316,
@@ -1625,7 +1625,7 @@ return "clicked: "+(e.innerText||e.getAttribute("aria-label")||e.tagName).replac
                 return
             print((''if xbg() else 'bg on (window %s)' % bgwin()) if bgwin() else 'bg off')
     else:
-        sys.exit('unknown command ' + c + '\n' + USAGE)
+        sys.exit(USAGE if c in ('help', '-h', '--help') else 'unknown command ' + c + '\n' + USAGE)
 
 
 STATS = os.path.join(HERE, 'stats.log')
