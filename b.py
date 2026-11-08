@@ -123,7 +123,7 @@ try{return r.innerText}finally{sl.forEach(([s,sp])=>{s.style.display=s.__d;sp.re
 const STATUS=/^(application (was )?(submitted|sent)|your application was sent.{0,40}|applied|applied (on .{1,20}|\d+ \w+ ago)|you applied( on .{1,20}| \d+ \w+ ago| to this (job|position|role)\.?)?)$/i;
 const stat=r=>[...(r||document).querySelectorAll('h1,h2,h3,h4,h5,span,p,div,strong,li')].some(x=>x.childElementCount<=3&&T(x.innerText).length<80&&STATUS.test(T(x.innerText))&&!x.closest('label,legend,fieldset,[role=radiogroup],[role=group],form')&&vis(x));
 const dsig=R=>R?T((R.querySelector('h1,h2,h3')||R).innerText).slice(0,80)+'|'+R.querySelectorAll(FIELD).length:'';
-function scope(){if(window.__gtAll)return null;const d=[...document.querySelectorAll('[role=dialog],[aria-modal=true],dialog[open]')].filter(e=>{const r=e.getBoundingClientRect();return r.width>80&&r.height>80&&getComputedStyle(e).visibility!='hidden'&&!/^\d+ notifications?\b/i.test(T(e.getAttribute('aria-label')||([...e.querySelectorAll('h1,h2,h3')].find(h=>h.getBoundingClientRect().height>2&&T(h.innerText))||{}).innerText||''))});
+function scope(){if(window.__gtAll)return null;const d=[...document.querySelectorAll('[role=dialog],[aria-modal=true],dialog[open]')].filter(e=>{const r=e.getBoundingClientRect();return r.width>80&&r.height>80&&getComputedStyle(e).visibility!='hidden'&&(!e.checkVisibility||e.checkVisibility({opacityProperty:true,visibilityProperty:true}))&&!/^\d+ notifications?\b/i.test(T(e.getAttribute('aria-label')||([...e.querySelectorAll('h1,h2,h3')].find(h=>h.getBoundingClientRect().height>2&&T(h.innerText))||{}).innerText||''))});
 const m=d.filter(e=>e.matches('[aria-modal=true],dialog[open]'));return m.length?m[m.length-1]:d.length?d[d.length-1]:null}
 function ctlOf(e){if(e.matches(FIELD))return e;if(e.tagName=='LABEL'){if(e.control)return e.control;const x=e.querySelector(FIELD);if(x)return x}
 for(let p=e,i=0;p&&i<4;i++,p=p.parentElement){const x=[...p.querySelectorAll(FIELD)].filter(x=>vis(x)||x.type=='file');if(x.length==1)return x[0];if(x.length>1)break}return null}
@@ -1184,6 +1184,13 @@ def main(a=None):
         sys.exit('bg mode is off, so this would act on the tab the user is looking at. Run b bg on first '
                  '(or add --front only if the user asked you to use their visible tab)')
     run(c, a)
+    if c in ACTS and xin():
+        try:
+            d = ext('dialogs', timeout=3)
+            if d and d != '[]':
+                print('(page alert auto-accepted: %s)' % ' | '.join(json.loads(d)))
+        except Exception:
+            pass
     if c not in ('log', 'bg', 'tabs', 'li', 'close') and not bgwin():
         front_mark()
 
@@ -1355,10 +1362,13 @@ if(e.form&&e.form.requestSubmit)e.form.requestSubmit();return "enter pressed"'''
                 out = page(PKOPT if ev else 'return MW(PKM+";return pk("+JSON.stringify(V)+")")', V=a[2], PKM=PKM)
         print(out)
     elif c == 'choose':
+        u0 = js('location.href')
         out = page(CHOOSE, Q=a[1], O=a[2] if len(a) > 2 else '')
         if out.startswith('chosen'):
             time.sleep(0.3)
-            if js('(()=>{const e=window.__ch;return e.tagName=="INPUT"?e.checked:e.getAttribute("aria-checked")=="true"})()') != 'true':
+            if js('location.href', soft=True) != u0 or js('!!window.__ch', soft=True) != 'true':
+                out += ' → page moved on (the choice took effect)'
+            elif js('(()=>{const e=window.__ch;return e.tagName=="INPUT"?e.checked:e.getAttribute("aria-checked")=="true"})()') != 'true':
                 out = out.replace('chosen', 'chosen but it un-checked itself (try b bg off + rclick)', 1)
         print(out)
     elif c == 'rclick':

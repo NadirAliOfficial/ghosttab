@@ -48,4 +48,8 @@ b js 'q.focus();1' >/dev/null
 ok "$(b type hello >/dev/null; b js 'q.value')" "^hello$" type-focused
 b go 'data:text/html,<iframe style="width:400px;height:200px" srcdoc="<input role=combobox aria-label=Proto placeholder=Proto>"></iframe>' >/dev/null
 ok "$(b pick Proto UDP 2>&1)" "^[^E]" pick-in-iframe-no-crash
+b go 'data:text/html,<select id=s aria-label=Color onchange="alert(`picked `+s.value)"><option>A</option><option>B</option></select><p id=o></p>' >/dev/null
+ok "$(b select Color B 2>&1)" "auto-accepted: alert: picked B" alert-auto-accept
+b go 'data:text/html,<div role=dialog style="width:300px;height:200px;opacity:0;position:fixed"><h3>OTP</h3><input placeholder=Code></div><input placeholder=Email>' >/dev/null
+ok "$(b el)" "Email" hidden-dialog-ignored
 rm -rf "$T"; exit ${FAIL:-0}

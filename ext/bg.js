@@ -29,6 +29,12 @@ async function attach(tabId) {
 chrome.debugger.onDetach.addListener(s => { if (D[s.tabId]) clearTimeout(D[s.tabId].timer); delete D[s.tabId]; });
 chrome.debugger.onEvent.addListener(async (s, m, p) => {
   const d = D[s.tabId];
+  if (m === 'Page.javascriptDialogOpening') {
+    // alert/confirm/prompt would freeze the hidden tab: accept it and keep the text for b to report
+    if (d) (d.dialogs = d.dialogs || []).push(p.type + ': ' + (p.message || '').slice(0, 200));
+    cdp(s.tabId, 'Page.handleJavaScriptDialog', {accept: true}).catch(() => {});
+    return;
+  }
   if (m !== 'Page.fileChooserOpened' || !d || !d.files) return;
   const files = d.files; d.files = null;
   try { await cdp(s.tabId, 'DOM.setFileInputFiles', {files, backendNodeId: p.backendNodeId}); } catch (e) {}
@@ -210,6 +216,7 @@ async function handle(m) {
       cdp(tabId, 'IO.close', {handle: r.resource.stream}).catch(() => {});
       return JSON.stringify(parts);
     }
+    case 'dialogs': { const x = D[tabId].dialogs || []; D[tabId].dialogs = []; return JSON.stringify(x); }
     case 'shot': return (await cdp(tabId, 'Page.captureScreenshot', {format: 'png'})).data;
   }
   throw new Error('unknown op ' + m.op);
